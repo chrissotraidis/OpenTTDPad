@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake-build-*/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Never commit commercial game assets
+*.GRF
+*.grf.orig
+SAMPLE.CAT
+sample.cat
+*.CAT
+TRG*.GRF
+trg*.grf

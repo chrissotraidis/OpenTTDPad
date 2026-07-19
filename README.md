@@ -2,7 +2,11 @@
 
 A native, touch-first iPadOS adaptation of the current upstream [OpenTTD](https://www.openttd.org) engine: touch-first controls, desktop-quality pointer and keyboard input, desktop-compatible saves, online content, and a reproducible open-source build.
 
-> **Status: specification phase.** No engine code lives in this repository yet. The complete, builder-ready Product Requirements Documentation is in [`/docs`](docs/README.md). The engineering work begins with the Phase 0 feasibility spike defined in [docs/09-roadmap.md](docs/09-roadmap.md).
+> **Status: Phase 0 feasibility.** P0.0 fact verification and the P0.1 macOS
+> baseline are complete: OpenTTD 15.3 builds in Release, all 96 upstream tests
+> pass, audited free base sets load, and a deterministic save has been visibly
+> reopened. P0.2 iOS cross-compilation is in progress. See
+> [docs/STATUS.md](docs/STATUS.md).
 
 ## What this project is
 
@@ -20,6 +24,15 @@ A native, touch-first iPadOS adaptation of the current upstream [OpenTTD](https:
 ## Documentation
 
 Start at [docs/README.md](docs/README.md) — it indexes the full PRD suite and defines the reading order for human contributors and autonomous builder agents alike.
+
+Active implementation records:
+
+- [Autonomous implementation goal](docs/IMPLEMENTATION_GOAL.md)
+- [Verified upstream facts and content licenses](docs/UPSTREAM_FACTS.md)
+- [Progress, commands, experiments, and evidence](docs/STATUS.md)
+- [Local reference-source policy](docs/REFERENCE_SOURCES.md)
+- [Downstream engine patch log](docs/PATCHES.md)
+- [Requirement deviations](docs/DEVIATIONS.md)
 
 ## Licensing
 

@@ -4,7 +4,8 @@
 **Repository:** `OpenTTDPad`
 **Research snapshot date:** July 19, 2026
 **Engine foundation:** current upstream OpenTTD source (stable 15.3 at research time; re-verify at build time — see [00-builder-instructions.md](00-builder-instructions.md))
-**Verdict:** Strong go, subject to the Phase 0 native-build feasibility spike
+**Verdict:** Strong go. P0.0 and P0.1 are complete; iOS feasibility remains
+subject to P0.2–P0.4 and Gate G0.
 
 This directory is the complete, authoritative Product Requirements Documentation for building a native iPadOS port of OpenTTD. It is written to be executed by an autonomous builder agent or a human engineering team with no other context.
 
@@ -29,6 +30,17 @@ This directory is the complete, authoritative Product Requirements Documentation
 | 12 | [Risk register](12-risks.md) | Risks R-01…R-12 with probability, impact, detection, mitigation | Everyone |
 | 13 | [Success metrics](13-metrics.md) | Alpha / beta / release exit criteria and how each is measured | Everyone |
 | 14 | [Glossary](14-glossary.md) | OpenTTD and Apple-platform terminology | Everyone |
+
+## Active implementation records
+
+| Document | Purpose |
+|---|---|
+| [IMPLEMENTATION_GOAL.md](IMPLEMENTATION_GOAL.md) | Goal-based autonomous builder prompt and proof loop |
+| [UPSTREAM_FACTS.md](UPSTREAM_FACTS.md) | Live versions, architecture facts, content checksums, and license audit |
+| [STATUS.md](STATUS.md) | Roadmap state, environment, commands, evidence, and experiment ledger |
+| [REFERENCE_SOURCES.md](REFERENCE_SOURCES.md) | Rules and manifest for the gitignored `ref/` workspace |
+| [PATCHES.md](PATCHES.md) | Required log of edits to pre-existing upstream engine files |
+| [DEVIATIONS.md](DEVIATIONS.md) | Maintainer-approved deviations from binding requirements |
 
 ## Requirement and task ID conventions
 

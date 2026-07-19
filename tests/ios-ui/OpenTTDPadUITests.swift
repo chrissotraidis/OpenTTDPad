@@ -23,6 +23,7 @@ final class OpenTTDPadUITests: XCTestCase {
         let app = launchGame(environment: ["OPENTTDPAD_FORCE_HINTS": "1"])
         let dismiss = app.buttons["Got it"]
         XCTAssertTrue(dismiss.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(dismiss.frame.height, 44)
         dismiss.tap()
         XCTAssertFalse(dismiss.waitForExistence(timeout: 1))
         XCTAssertTrue(app.windows.firstMatch.exists)
@@ -69,6 +70,24 @@ final class OpenTTDPadUITests: XCTestCase {
         surface.coordinate(withNormalizedOffset: CGVector(dx: 0.629, dy: 0.093)).tap()
         let cancel = app.buttons["Cancel active construction tool"]
         XCTAssertTrue(cancel.waitForExistence(timeout: 3))
+        XCTAssertGreaterThanOrEqual(cancel.frame.height, 44)
+
+        /* Left/right placement must update an already-active construction
+         * control, not only the options button on the next launch. */
+        let cancelStartedOnLeft = cancel.frame.midX < surface.frame.midX
+        options.tap()
+        app.buttons["Touch Controls"].tap()
+        XCTAssertTrue(app.buttons["Layout & Feedback"].waitForExistence(timeout: 2))
+        app.buttons["Layout & Feedback"].tap()
+        let controlSide = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Controls side:")).firstMatch
+        XCTAssertTrue(controlSide.waitForExistence(timeout: 2))
+        let originalControlSide = controlSide.label
+        controlSide.tap()
+        XCTAssertTrue(app.buttons["Back to Touch Controls"].waitForExistence(timeout: 2))
+        app.buttons["Back to Touch Controls"].tap()
+        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 2))
+        app.buttons["Done"].tap()
+        XCTAssertNotEqual(cancel.frame.midX < surface.frame.midX, cancelStartedOnLeft)
 
         /* A direct construction drag must remain one continuous contact. */
         let start = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.30, dy: 0.73))
@@ -78,6 +97,19 @@ final class OpenTTDPadUITests: XCTestCase {
         cancel.tap()
         XCTAssertFalse(cancel.waitForExistence(timeout: 2))
         XCTAssertEqual(app.state, .runningForeground)
+
+        /* Restore the persisted preference so every scenario is isolated. */
+        options.tap()
+        app.buttons["Touch Controls"].tap()
+        XCTAssertTrue(app.buttons["Layout & Feedback"].waitForExistence(timeout: 2))
+        app.buttons["Layout & Feedback"].tap()
+        let restoredControlSide = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Controls side:")).firstMatch
+        XCTAssertTrue(restoredControlSide.waitForExistence(timeout: 2))
+        restoredControlSide.tap()
+        XCTAssertTrue(app.buttons[originalControlSide].waitForExistence(timeout: 2))
+        app.buttons["Back to Touch Controls"].tap()
+        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 2))
+        app.buttons["Done"].tap()
     }
 
     func testTouchOnlyRoadConstructionAndCancellation() {
@@ -126,8 +158,11 @@ final class OpenTTDPadUITests: XCTestCase {
 
     func testNativeOptionsTouchSettingsAndNotices() {
         let app = launchGame()
+        let surface = app.windows.firstMatch
         let options = app.buttons["OpenTTDPad options"]
         XCTAssertTrue(options.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(options.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(options.frame.height, 44)
         options.tap()
         XCTAssertTrue(app.buttons["Touch Controls"].waitForExistence(timeout: 2))
         app.buttons["Touch Controls"].tap()
@@ -138,8 +173,36 @@ final class OpenTTDPadUITests: XCTestCase {
         XCTAssertTrue(response.waitForExistence(timeout: 2))
         XCTAssertTrue(precision.exists)
         XCTAssertTrue(targets.exists)
+        XCTAssertTrue(app.buttons["Layout & Feedback"].exists)
+        app.buttons["Layout & Feedback"].tap()
 
-        app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5)).tap()
+        let side = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Controls side:")).firstMatch
+        let haptics = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Haptics:")).firstMatch
+        XCTAssertTrue(side.exists)
+        XCTAssertTrue(haptics.exists)
+
+        let startedOnLeft = options.frame.midX < surface.frame.midX
+        let originalSideLabel = side.label
+        side.tap()
+        let changedSide = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Controls side:")).firstMatch
+        XCTAssertTrue(changedSide.waitForExistence(timeout: 2))
+        XCTAssertNotEqual(changedSide.label, originalSideLabel)
+        XCTAssertNotEqual(options.frame.midX < surface.frame.midX, startedOnLeft)
+        changedSide.tap()
+        XCTAssertTrue(app.buttons[originalSideLabel].waitForExistence(timeout: 2))
+
+        let currentHaptics = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Haptics:")).firstMatch
+        let originalHapticsLabel = currentHaptics.label
+        currentHaptics.tap()
+        let changedHaptics = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Haptics:")).firstMatch
+        XCTAssertTrue(changedHaptics.waitForExistence(timeout: 2))
+        XCTAssertNotEqual(changedHaptics.label, originalHapticsLabel)
+        changedHaptics.tap()
+        XCTAssertTrue(app.buttons[originalHapticsLabel].waitForExistence(timeout: 2))
+
+        app.buttons["Back to Touch Controls"].tap()
+        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 2))
+        app.buttons["Done"].tap()
         options.tap()
         XCTAssertTrue(app.buttons["Licenses & Credits"].waitForExistence(timeout: 2))
         app.buttons["Licenses & Credits"].tap()

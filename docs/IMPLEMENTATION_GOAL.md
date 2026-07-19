@@ -95,8 +95,8 @@ latency, thermal, audio-route, and device backgrounding remain hardware gates.
 - Scene startup, fullscreen landscape, gameplay, sandbox save/reload, emergency
   background save, software keyboard, Files import/export, touch settings,
   notices, and the live HTTPS content catalog work.
-- Touch is source-tagged with SDL synthesis disabled. Sixteen deterministic
-  touch scenarios and the complete 112-test host suite pass. Seven native
+- Touch is source-tagged with SDL synthesis disabled. Seventeen deterministic
+  touch scenarios and the complete 113-test host suite pass. Seven native
   XCTest scenarios cover map drag/precision, exact Rail and Road palettes →
   direct construction drags → cancellation, first-run coaching, lifecycle,
   settings, notices, and ZIP save export.
@@ -104,7 +104,7 @@ latency, thermal, audio-route, and device backgrounding remain hardware gates.
   corresponding-source/patch packaging, release hygiene, and CI workflows are
   tracked. The pinned SDL UIKit compatibility patch is reproducible.
 - The complete seven-scenario native suite passes on Pro, base, and mini iPad
-  Simulators (21/21), and the full host suite passes 112/112.
+  Simulators (21/21), and the full host suite passes 113/113.
 - Physical pointer/Pencil/keyboard, sustained multitouch, audio routes,
   performance, ten-cycle lifecycle, desktop round-trip, the complete T-GAME
   touch route, and first-user usability gates remain open because they require

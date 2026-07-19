@@ -138,6 +138,28 @@ TEST_CASE("OpenTTDPad pinch is distinct from two-finger pan")
 	CHECK((HasAction(actions, ActionType::PanBegin) || pan.GetState() == State::Panning));
 }
 
+TEST_CASE("OpenTTDPad two-finger pan reanchors when one finger lifts")
+{
+	GestureState state;
+	state.FingerDown(1, {100, 100}, 0, false);
+	state.FingerDown(2, {140, 100}, 10, false);
+	state.FingerMove(1, {120, 120}, 30);
+	state.FingerMove(2, {160, 120}, 40);
+
+	auto reanchor = state.FingerUp(2, {160, 120}, 50);
+	REQUIRE(reanchor.size() == 1);
+	CHECK(reanchor.front().type == ActionType::PanBegin);
+	CHECK(reanchor.front().position.x == 120);
+	CHECK(reanchor.front().position.y == 120);
+
+	auto moved = state.FingerMove(1, {125, 120}, 60);
+	REQUIRE(moved.size() == 1);
+	CHECK(moved.front().type == ActionType::PanMove);
+	CHECK(moved.front().delta.x == 5);
+	CHECK(moved.front().delta.y == 0);
+	CHECK(HasAction(state.FingerUp(1, {125, 120}, 70), ActionType::PanEnd));
+}
+
 TEST_CASE("OpenTTDPad long press enters precision and commits on lift")
 {
 	GestureState state;

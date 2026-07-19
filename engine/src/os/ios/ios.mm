@@ -73,6 +73,17 @@ static UIWindow *OpenTTDPadGameWindow()
 	return nil;
 }
 
+static CGFloat OpenTTDPadOverlayScale(UIWindow *window)
+{
+	if (window == nil || window.screen == nil) return 1.0;
+	const CGSize window_size = window.bounds.size;
+	const CGSize screen_size = window.screen.bounds.size;
+	const CGFloat window_long_edge = std::max(window_size.width, window_size.height);
+	const CGFloat screen_long_edge = std::max(screen_size.width, screen_size.height);
+	const CGFloat coordinate_scale = screen_long_edge > 0 ? window_long_edge / screen_long_edge : 1.0;
+	return std::clamp(std::max(coordinate_scale, window.screen.scale), 1.0, 3.0);
+}
+
 static void OpenTTDPadRequestLandscape(UIWindowScene *scene)
 {
 	if (scene == nil) return;
@@ -177,6 +188,9 @@ extern "C" const char *OpenTTDPadCACertificatePath()
 extern "C" void OpenTTDPadHaptic(int kind)
 {
 	dispatch_async(dispatch_get_main_queue(), ^{
+		NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+		[defaults registerDefaults:@{@"OpenTTDPadHaptics": @YES}];
+		if (![defaults boolForKey:@"OpenTTDPadHaptics"]) return;
 		if (kind == 0) {
 			UISelectionFeedbackGenerator *feedback = [[UISelectionFeedbackGenerator alloc] init];
 			[feedback prepare];
@@ -192,6 +206,30 @@ extern "C" void OpenTTDPadHaptic(int kind)
 	});
 }
 
+static void OpenTTDPadPositionToolOverlay(UIWindow *window)
+{
+	if (window == nil || OpenTTDPadCancelToolButton == nil) return;
+	const UIEdgeInsets safe = window.safeAreaInsets;
+	const CGFloat scale = OpenTTDPadOverlayScale(window);
+	const bool left_handed = OpenTTDPadControlsLeftHanded();
+	OpenTTDPadCancelToolButton.center = CGPointMake(
+		left_handed ? safe.left + 72.0 * scale : CGRectGetWidth(window.bounds) - safe.right - 72.0 * scale,
+		CGRectGetHeight(window.bounds) - safe.bottom - 42.0 * scale);
+	if (OpenTTDPadToolHint == nil) return;
+	const CGFloat half_width = CGRectGetWidth(OpenTTDPadToolHint.bounds) / 2.0;
+	const CGFloat proposed_x = OpenTTDPadCancelToolButton.center.x + (left_handed ? 180.0 : -180.0) * scale;
+	const CGFloat minimum_x = safe.left + half_width + 8.0 * scale;
+	const CGFloat maximum_x = CGRectGetWidth(window.bounds) - safe.right - half_width - 8.0 * scale;
+	OpenTTDPadToolHint.center = CGPointMake(std::clamp(proposed_x, minimum_x, maximum_x),
+		OpenTTDPadCancelToolButton.center.y);
+}
+
+extern "C" void OpenTTDPadRefreshControlPlacement()
+{
+	OpenTTDPadEnsureOptionsButton();
+	dispatch_async(dispatch_get_main_queue(), ^{ OpenTTDPadPositionToolOverlay(OpenTTDPadGameWindow()); });
+}
+
 extern "C" void OpenTTDPadMaybeShowTouchHint()
 {
 	static bool requested = false;
@@ -204,41 +242,44 @@ extern "C" void OpenTTDPadMaybeShowTouchHint()
 		UIWindow *window = OpenTTDPadGameWindow();
 		if (window == nil || OpenTTDPadTouchHint != nil) return;
 
-		const CGFloat width = std::min<CGFloat>(520.0, CGRectGetWidth(window.bounds) - 40.0);
-		OpenTTDPadTouchHint = [[UIView alloc] initWithFrame:CGRectMake(0, 0, width, 104.0)];
+		const CGFloat scale = OpenTTDPadOverlayScale(window);
+		const CGFloat width = std::min<CGFloat>(520.0 * scale, CGRectGetWidth(window.bounds) - 40.0 * scale);
+		OpenTTDPadTouchHint = [[UIView alloc] initWithFrame:CGRectMake(0, 0, width, 104.0 * scale)];
 		OpenTTDPadTouchHint.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.94];
-		OpenTTDPadTouchHint.layer.cornerRadius = 18.0;
-		OpenTTDPadTouchHint.layer.borderWidth = 1.0;
+		OpenTTDPadTouchHint.layer.cornerRadius = 18.0 * scale;
+		OpenTTDPadTouchHint.layer.borderWidth = scale;
 		OpenTTDPadTouchHint.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.18].CGColor;
 		OpenTTDPadTouchHint.accessibilityViewIsModal = NO;
 
-		UILabel *title = [[[UILabel alloc] initWithFrame:CGRectMake(20, 14, width - 120, 24)] autorelease];
+		UILabel *title = [[[UILabel alloc] initWithFrame:CGRectMake(20.0 * scale, 14.0 * scale,
+			width - 120.0 * scale, 24.0 * scale)] autorelease];
 		title.text = @"Built for touch";
 		title.textColor = UIColor.whiteColor;
-		title.font = [UIFont boldSystemFontOfSize:18.0];
+		title.font = [UIFont boldSystemFontOfSize:18.0 * scale];
 		[OpenTTDPadTouchHint addSubview:title];
 
-		UILabel *body = [[[UILabel alloc] initWithFrame:CGRectMake(20, 39, width - 120, 52)] autorelease];
+		UILabel *body = [[[UILabel alloc] initWithFrame:CGRectMake(20.0 * scale, 39.0 * scale,
+			width - 120.0 * scale, 52.0 * scale)] autorelease];
 		body.text = @"Drag the map to pan · Pinch to zoom\nTwo-finger tap for details · Hold for precision";
 		body.numberOfLines = 2;
 		body.textColor = [UIColor colorWithWhite:0.86 alpha:1.0];
-		body.font = [UIFont systemFontOfSize:14.0];
+		body.font = [UIFont systemFontOfSize:14.0 * scale];
 		[OpenTTDPadTouchHint addSubview:body];
 
 		UIButton *dismiss = [UIButton buttonWithType:UIButtonTypeSystem];
-		dismiss.frame = CGRectMake(width - 94, 28, 74, 48);
-		dismiss.layer.cornerRadius = 12.0;
+		dismiss.frame = CGRectMake(width - 94.0 * scale, 28.0 * scale, 74.0 * scale, 48.0 * scale);
+		dismiss.layer.cornerRadius = 12.0 * scale;
 		dismiss.backgroundColor = UIColor.systemBlueColor;
 		[dismiss setTitle:@"Got it" forState:UIControlStateNormal];
 		[dismiss setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-		dismiss.titleLabel.font = [UIFont boldSystemFontOfSize:16.0];
+		dismiss.titleLabel.font = [UIFont boldSystemFontOfSize:16.0 * scale];
 		[dismiss addTarget:[OpenTTDPadOverlayActions shared] action:@selector(dismissTouchHint)
 			forControlEvents:UIControlEventTouchUpInside];
 		[OpenTTDPadTouchHint addSubview:dismiss];
 
 		const UIEdgeInsets safe = window.safeAreaInsets;
 		OpenTTDPadTouchHint.center = CGPointMake(CGRectGetMidX(window.bounds),
-			CGRectGetMaxY(window.bounds) - safe.bottom - 72.0);
+			CGRectGetMaxY(window.bounds) - safe.bottom - 72.0 * scale);
 		[window addSubview:OpenTTDPadTouchHint];
 	});
 }
@@ -261,36 +302,34 @@ extern "C" void OpenTTDPadSetToolOverlay(bool active)
 
 		UIWindow *window = OpenTTDPadGameWindow();
 		if (window == nil || OpenTTDPadCancelToolButton != nil) return;
+		const CGFloat scale = OpenTTDPadOverlayScale(window);
 		OpenTTDPadCancelToolButton = [[UIButton buttonWithType:UIButtonTypeSystem] retain];
-		OpenTTDPadCancelToolButton.frame = CGRectMake(0, 0, 112.0, 52.0);
+		OpenTTDPadCancelToolButton.frame = CGRectMake(0, 0, 112.0 * scale, 52.0 * scale);
 		OpenTTDPadCancelToolButton.backgroundColor = [UIColor colorWithRed:0.70 green:0.12 blue:0.10 alpha:0.94];
-		OpenTTDPadCancelToolButton.layer.cornerRadius = 16.0;
-		OpenTTDPadCancelToolButton.layer.borderWidth = 1.0;
+		OpenTTDPadCancelToolButton.layer.cornerRadius = 16.0 * scale;
+		OpenTTDPadCancelToolButton.layer.borderWidth = scale;
 		OpenTTDPadCancelToolButton.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.32].CGColor;
 		[OpenTTDPadCancelToolButton setTitle:@"✕  Cancel" forState:UIControlStateNormal];
 		[OpenTTDPadCancelToolButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-		OpenTTDPadCancelToolButton.titleLabel.font = [UIFont boldSystemFontOfSize:16.0];
+		OpenTTDPadCancelToolButton.titleLabel.font = [UIFont boldSystemFontOfSize:16.0 * scale];
 		OpenTTDPadCancelToolButton.accessibilityLabel = @"Cancel active construction tool";
 		[OpenTTDPadCancelToolButton addTarget:[OpenTTDPadOverlayActions shared] action:@selector(cancelActiveTool)
 			forControlEvents:UIControlEventTouchUpInside];
-		const UIEdgeInsets safe = window.safeAreaInsets;
-		OpenTTDPadCancelToolButton.center = CGPointMake(
-			CGRectGetWidth(window.bounds) - safe.right - 72.0,
-			CGRectGetHeight(window.bounds) - safe.bottom - 42.0);
 		[window addSubview:OpenTTDPadCancelToolButton];
+		OpenTTDPadPositionToolOverlay(window);
 
 		if (![[NSUserDefaults standardUserDefaults] boolForKey:@"OpenTTDPadToolHintSeen"]) {
 			[[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"OpenTTDPadToolHintSeen"];
-			OpenTTDPadToolHint = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 280.0, 40.0)];
+			OpenTTDPadToolHint = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 280.0 * scale, 40.0 * scale)];
 			OpenTTDPadToolHint.text = @"Drag to build · Two fingers cancel";
 			OpenTTDPadToolHint.textAlignment = NSTextAlignmentCenter;
 			OpenTTDPadToolHint.textColor = UIColor.whiteColor;
 			OpenTTDPadToolHint.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.92];
-			OpenTTDPadToolHint.layer.cornerRadius = 12.0;
+			OpenTTDPadToolHint.font = [UIFont systemFontOfSize:15.0 * scale weight:UIFontWeightSemibold];
+			OpenTTDPadToolHint.layer.cornerRadius = 12.0 * scale;
 			OpenTTDPadToolHint.layer.masksToBounds = YES;
-			OpenTTDPadToolHint.center = CGPointMake(OpenTTDPadCancelToolButton.center.x - 180.0,
-				OpenTTDPadCancelToolButton.center.y);
 			[window addSubview:OpenTTDPadToolHint];
+			OpenTTDPadPositionToolOverlay(window);
 			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 4 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
 				[OpenTTDPadToolHint removeFromSuperview];
 				[OpenTTDPadToolHint release];
@@ -321,10 +360,11 @@ extern "C" void OpenTTDPadPrecisionLoupe(bool visible, double normalized_x, doub
 		UIWindow *window = OpenTTDPadGameWindow();
 		if (window == nil) return;
 		const CGRect bounds = window.bounds;
-		const CGFloat diameter = 132.0;
+		const CGFloat overlay_scale = OpenTTDPadOverlayScale(window);
+		const CGFloat diameter = 132.0 * overlay_scale;
 		const CGFloat radius = diameter / 2.0;
 		const CGPoint finger = CGPointMake(normalized_x * CGRectGetWidth(bounds), normalized_y * CGRectGetHeight(bounds));
-		const CGPoint target = CGPointMake(finger.x, finger.y - 60.0);
+		const CGPoint target = CGPointMake(finger.x, finger.y - 60.0 * overlay_scale);
 
 		if (OpenTTDPadLoupe == nil) {
 			UIGraphicsBeginImageContextWithOptions(bounds.size, YES, 0);
@@ -337,7 +377,7 @@ extern "C" void OpenTTDPadPrecisionLoupe(bool visible, double normalized_x, doub
 			OpenTTDPadLoupe.accessibilityLabel = @"Precision target loupe";
 			OpenTTDPadLoupe.layer.cornerRadius = radius;
 			OpenTTDPadLoupe.layer.masksToBounds = YES;
-			OpenTTDPadLoupe.layer.borderWidth = 3.0;
+			OpenTTDPadLoupe.layer.borderWidth = 3.0 * overlay_scale;
 			OpenTTDPadLoupe.layer.borderColor = UIColor.whiteColor.CGColor;
 			OpenTTDPadLoupe.layer.shadowColor = UIColor.blackColor.CGColor;
 			OpenTTDPadLoupe.layer.shadowOpacity = 0.45;
@@ -346,8 +386,10 @@ extern "C" void OpenTTDPadPrecisionLoupe(bool visible, double normalized_x, doub
 			OpenTTDPadLoupeImage.contentMode = UIViewContentModeScaleToFill;
 			[OpenTTDPadLoupe addSubview:OpenTTDPadLoupeImage];
 
-			UIView *horizontal = [[[UIView alloc] initWithFrame:CGRectMake(radius - 16, radius - 1, 32, 2)] autorelease];
-			UIView *vertical = [[[UIView alloc] initWithFrame:CGRectMake(radius - 1, radius - 16, 2, 32)] autorelease];
+			UIView *horizontal = [[[UIView alloc] initWithFrame:CGRectMake(radius - 16.0 * overlay_scale,
+				radius - overlay_scale, 32.0 * overlay_scale, 2.0 * overlay_scale)] autorelease];
+			UIView *vertical = [[[UIView alloc] initWithFrame:CGRectMake(radius - overlay_scale,
+				radius - 16.0 * overlay_scale, 2.0 * overlay_scale, 32.0 * overlay_scale)] autorelease];
 			horizontal.backgroundColor = UIColor.systemYellowColor;
 			vertical.backgroundColor = UIColor.systemYellowColor;
 			[OpenTTDPadLoupe addSubview:horizontal];
@@ -358,9 +400,10 @@ extern "C" void OpenTTDPadPrecisionLoupe(bool visible, double normalized_x, doub
 		const CGFloat scale = std::clamp(magnification, 1.5, 3.0);
 		OpenTTDPadLoupeImage.frame = CGRectMake(radius - target.x * scale, radius - target.y * scale,
 			CGRectGetWidth(bounds) * scale, CGRectGetHeight(bounds) * scale);
-		const CGFloat center_x = std::clamp(target.x, radius + 8.0, CGRectGetWidth(bounds) - radius - 8.0);
-		const CGFloat center_y = std::clamp(target.y - radius - 16.0, radius + 8.0,
-			CGRectGetHeight(bounds) - radius - 8.0);
+		const CGFloat margin = 8.0 * overlay_scale;
+		const CGFloat center_x = std::clamp(target.x, radius + margin, CGRectGetWidth(bounds) - radius - margin);
+		const CGFloat center_y = std::clamp(target.y - radius - 16.0 * overlay_scale, radius + margin,
+			CGRectGetHeight(bounds) - radius - margin);
 		OpenTTDPadLoupe.center = CGPointMake(center_x, center_y);
 		[window bringSubviewToFront:OpenTTDPadLoupe];
 	});

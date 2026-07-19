@@ -303,7 +303,7 @@ std::vector<Action> GestureState::FingerUp(int64_t id, TouchPoint position, uint
 		return is_tap ? std::vector<Action>{{ActionType::SecondaryClick, centroid}} : std::vector<Action>{};
 	}
 
-	if (ending_state == State::Pinching && this->FingerCount() == 1) {
+	if ((ending_state == State::Panning || ending_state == State::Pinching) && this->FingerCount() == 1) {
 		this->state = State::Panning;
 		this->last_centroid = this->Centroid();
 		this->pan_velocity = {};

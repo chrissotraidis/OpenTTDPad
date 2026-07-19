@@ -26,9 +26,12 @@ purpose and normal review.
 
 New downstream source surfaces:
 
-- `engine/src/os/ios/` — scene/orientation, lifecycle, haptics, loupe, Files import/export, persistent touch settings, notices, and CoreText fallback services.
+- `engine/src/os/ios/` — scene/orientation, lifecycle, optional haptics, loupe,
+  Files import/export, persistent touch settings, left/right safe-area-aware
+  control placement, notices, and CoreText fallback services.
 - `engine/src/music/ios_m.*` — native Audio Unit graph and bundled TimGM6mb MIDI playback.
-- `engine/src/touch/` — platform-neutral touch thresholds, recognizer, and expanded-hit resolver.
+- `engine/src/touch/` — platform-neutral touch thresholds, recognizer,
+  finger-count transition reanchoring, and expanded-hit resolver.
 - `engine/src/tests/gesture_state.cpp` — deterministic synthetic input streams.
 - `os/ios/AppIconContents.json` and `BrandTintContents.json` — the generated
   asset catalog reuses the tracked GPLv2 upstream 1024 px artwork for the

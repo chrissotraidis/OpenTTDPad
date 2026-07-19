@@ -43,6 +43,27 @@ static UIWindow *OpenTTDPadVisibleWindow()
 	return nil;
 }
 
+static CGFloat OpenTTDPadOverlayScale(UIWindow *window)
+{
+	if (window == nil || window.screen == nil) return 1.0;
+	const CGSize window_size = window.bounds.size;
+	const CGSize screen_size = window.screen.bounds.size;
+	const CGFloat window_long_edge = std::max(window_size.width, window_size.height);
+	const CGFloat screen_long_edge = std::max(screen_size.width, screen_size.height);
+	const CGFloat coordinate_scale = screen_long_edge > 0 ? window_long_edge / screen_long_edge : 1.0;
+	return std::clamp(std::max(coordinate_scale, window.screen.scale), 1.0, 3.0);
+}
+
+static void OpenTTDPadPositionOptionsButton(UIWindow *window)
+{
+	if (window == nil || OpenTTDPadOptionsButton == nil) return;
+	const UIEdgeInsets safe = window.safeAreaInsets;
+	const CGFloat scale = OpenTTDPadOverlayScale(window);
+	const CGFloat x = OpenTTDPadControlsLeftHanded() ? safe.left + 34.0 * scale :
+		CGRectGetWidth(window.bounds) - safe.right - 34.0 * scale;
+	OpenTTDPadOptionsButton.center = CGPointMake(x, CGRectGetMidY(window.bounds));
+}
+
 static UIViewController *OpenTTDPadPresenter()
 {
 	UIViewController *controller = OpenTTDPadVisibleWindow().rootViewController;
@@ -211,6 +232,7 @@ static NSURL *OpenTTDPadCreateSaveArchive(NSError **output_error, NSUInteger *ou
 - (void)showImport;
 - (void)showExport;
 - (void)showTouchSettings;
+- (void)showLayoutAndFeedbackSettings;
 - (void)showNotices;
 - (void)dismissPresented;
 @end
@@ -329,7 +351,8 @@ static NSURL *OpenTTDPadCreateSaveArchive(NSError **output_error, NSUInteger *ou
 {
 	NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
 	[defaults registerDefaults:@{@"OpenTTDPadGestureResponse": @1, @"OpenTTDPadLongPressMS": @500,
-		@"OpenTTDPadExpandedTargets": @YES, @"OpenTTDPadMomentum": @YES}];
+		@"OpenTTDPadExpandedTargets": @YES, @"OpenTTDPadMomentum": @YES,
+		@"OpenTTDPadControlsLeftHanded": @NO, @"OpenTTDPadHaptics": @YES}];
 	NSArray<NSString *> *responses = @[@"Relaxed", @"Balanced", @"Responsive"];
 	NSInteger response = std::clamp<NSInteger>([defaults integerForKey:@"OpenTTDPadGestureResponse"], 0, 2);
 	UIAlertController *settings = [UIAlertController alertControllerWithTitle:@"Touch Controls"
@@ -354,13 +377,45 @@ static NSURL *OpenTTDPadCreateSaveArchive(NSError **output_error, NSUInteger *ou
 			OpenTTDPadSettingsGeneration++;
 			[self showTouchSettings];
 		}]];
+	[settings addAction:[UIAlertAction actionWithTitle:@"Layout & Feedback" style:UIAlertActionStyleDefault
+		handler:^(__unused UIAlertAction *action) { [self showLayoutAndFeedbackSettings]; }]];
 	[settings addAction:[UIAlertAction actionWithTitle:@"Show Touch Tips Again" style:UIAlertActionStyleDefault
 		handler:^(__unused UIAlertAction *action) {
 			[defaults setBool:NO forKey:@"OpenTTDPadTouchHintSeen"];
 			[defaults setBool:NO forKey:@"OpenTTDPadToolHintSeen"];
 			OpenTTDPadPresentMessage(@"Touch Tips Reset", @"The touch coach will appear the next time the app starts a game.");
 		}]];
-	[settings addAction:[UIAlertAction actionWithTitle:@"Done" style:UIAlertActionStyleCancel handler:nil]];
+	/* Cancel actions are omitted from iPad action-sheet popovers. Keep Done as
+	 * an explicit action so touch users always have a deterministic exit. */
+	[settings addAction:[UIAlertAction actionWithTitle:@"Done" style:UIAlertActionStyleDefault handler:nil]];
+	settings.popoverPresentationController.sourceView = OpenTTDPadOptionsButton;
+	settings.popoverPresentationController.sourceRect = OpenTTDPadOptionsButton.bounds;
+	[OpenTTDPadPresenter() presentViewController:settings animated:YES completion:nil];
+}
+
+- (void)showLayoutAndFeedbackSettings
+{
+	NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+	[defaults registerDefaults:@{@"OpenTTDPadControlsLeftHanded": @NO, @"OpenTTDPadHaptics": @YES}];
+	UIAlertController *settings = [UIAlertController alertControllerWithTitle:@"Layout & Feedback"
+		message:@"Place the persistent controls under either thumb and choose whether touch actions provide feedback."
+		preferredStyle:UIAlertControllerStyleActionSheet];
+	BOOL left_handed = [defaults boolForKey:@"OpenTTDPadControlsLeftHanded"];
+	[settings addAction:[UIAlertAction actionWithTitle:[NSString stringWithFormat:@"Controls side: %@", left_handed ? @"Left" : @"Right"]
+		style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+			[defaults setBool:!left_handed forKey:@"OpenTTDPadControlsLeftHanded"];
+			OpenTTDPadRefreshControlPlacement();
+			[self showLayoutAndFeedbackSettings];
+		}]];
+	BOOL haptics = [defaults boolForKey:@"OpenTTDPadHaptics"];
+	[settings addAction:[UIAlertAction actionWithTitle:[NSString stringWithFormat:@"Haptics: %@", haptics ? @"On" : @"Off"]
+		style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+			[defaults setBool:!haptics forKey:@"OpenTTDPadHaptics"];
+			[self showLayoutAndFeedbackSettings];
+		}]];
+	[settings addAction:[UIAlertAction actionWithTitle:@"Back to Touch Controls" style:UIAlertActionStyleDefault
+		handler:^(__unused UIAlertAction *action) { [self showTouchSettings]; }]];
+	[settings addAction:[UIAlertAction actionWithTitle:@"Done" style:UIAlertActionStyleDefault handler:nil]];
 	settings.popoverPresentationController.sourceView = OpenTTDPadOptionsButton;
 	settings.popoverPresentationController.sourceRect = OpenTTDPadOptionsButton.bounds;
 	[OpenTTDPadPresenter() presentViewController:settings animated:YES completion:nil];
@@ -410,24 +465,29 @@ extern "C" void OpenTTDPadEnsureOptionsButton()
 	dispatch_async(dispatch_get_main_queue(), ^{
 		UIWindow *window = OpenTTDPadVisibleWindow();
 		if (window == nil) return;
-		if (OpenTTDPadOptionsButton != nil && OpenTTDPadOptionsButton.window == window) return;
+		if (OpenTTDPadOptionsButton != nil && OpenTTDPadOptionsButton.window == window) {
+			OpenTTDPadPositionOptionsButton(window);
+			return;
+		}
 		[OpenTTDPadOptionsButton removeFromSuperview];
 		[OpenTTDPadOptionsButton release];
 		OpenTTDPadOptionsButton = [[UIButton buttonWithType:UIButtonTypeSystem] retain];
-		OpenTTDPadOptionsButton.frame = CGRectMake(0, 0, 52, 52);
-		OpenTTDPadOptionsButton.layer.cornerRadius = 16;
+		const CGFloat scale = OpenTTDPadOverlayScale(window);
+		OpenTTDPadOptionsButton.frame = CGRectMake(0, 0, 52.0 * scale, 52.0 * scale);
+		OpenTTDPadOptionsButton.layer.cornerRadius = 16.0 * scale;
 		OpenTTDPadOptionsButton.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.88];
-		OpenTTDPadOptionsButton.layer.borderWidth = 1;
+		OpenTTDPadOptionsButton.layer.borderWidth = scale;
 		OpenTTDPadOptionsButton.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.24].CGColor;
-		[OpenTTDPadOptionsButton setImage:[UIImage systemImageNamed:@"ellipsis"] forState:UIControlStateNormal];
+		UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration configurationWithPointSize:20.0 * scale
+			weight:UIImageSymbolWeightSemibold];
+		[OpenTTDPadOptionsButton setImage:[[UIImage systemImageNamed:@"ellipsis"] imageWithConfiguration:symbol]
+			forState:UIControlStateNormal];
 		OpenTTDPadOptionsButton.tintColor = UIColor.whiteColor;
 		OpenTTDPadOptionsButton.accessibilityLabel = @"OpenTTDPad options";
 		[OpenTTDPadOptionsButton addTarget:[OpenTTDPadDocumentManager shared] action:@selector(showOptions)
 			forControlEvents:UIControlEventTouchUpInside];
-		UIEdgeInsets safe = window.safeAreaInsets;
-		OpenTTDPadOptionsButton.center = CGPointMake(CGRectGetWidth(window.bounds) - safe.right - 34,
-			CGRectGetMidY(window.bounds));
 		[window addSubview:OpenTTDPadOptionsButton];
+		OpenTTDPadPositionOptionsButton(window);
 	});
 }
 
@@ -455,10 +515,18 @@ extern "C" void OpenTTDPadLoadTouchSettings(double *threshold_scale, uint32_t *l
 {
 	NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
 	[defaults registerDefaults:@{@"OpenTTDPadGestureResponse": @1, @"OpenTTDPadLongPressMS": @500,
-		@"OpenTTDPadExpandedTargets": @YES, @"OpenTTDPadMomentum": @YES}];
+		@"OpenTTDPadExpandedTargets": @YES, @"OpenTTDPadMomentum": @YES,
+		@"OpenTTDPadControlsLeftHanded": @NO, @"OpenTTDPadHaptics": @YES}];
 	const NSInteger response = std::clamp<NSInteger>([defaults integerForKey:@"OpenTTDPadGestureResponse"], 0, 2);
 	if (threshold_scale != nullptr) *threshold_scale = response == 0 ? 1.25 : response == 2 ? 0.75 : 1.0;
 	if (long_press_ms != nullptr) *long_press_ms = static_cast<uint32_t>([defaults integerForKey:@"OpenTTDPadLongPressMS"]);
 	if (expanded_targets != nullptr) *expanded_targets = [defaults boolForKey:@"OpenTTDPadExpandedTargets"];
 	if (momentum != nullptr) *momentum = [defaults boolForKey:@"OpenTTDPadMomentum"];
+}
+
+extern "C" bool OpenTTDPadControlsLeftHanded()
+{
+	NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+	[defaults registerDefaults:@{@"OpenTTDPadControlsLeftHanded": @NO}];
+	return [defaults boolForKey:@"OpenTTDPadControlsLeftHanded"];
 }

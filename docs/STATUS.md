@@ -76,7 +76,7 @@ Final unsigned IPA:
 
 ```text
 build/artifacts/OpenTTDPad-unsigned.ipa
-SHA-256 874bd44587024a7c8e9826c98ea21449e8b9ab794602270c18d80f5d96f58b63
+SHA-256 38e513f65b9fe9b81b8ee2d1c45df7d20cc7f40c2e4c13b2a677d75e4889f21e
 ```
 
 Two consecutive packaging runs produced that same checksum. The IPA packager
@@ -130,13 +130,20 @@ currently emits:
 - thresholded pinch zoom around the current centroid;
 - long-press precision entry/move/commit events;
 - momentum only after viewport pan;
+- seamless reanchoring when a two-finger pan or pinch drops to one finger;
 - construction abort when a second finger lands;
 - cancellation and button-state cleanup on focus loss.
 
 Touch-only hit testing expands eligible undersized controls to at least 44 pt
 without changing their drawn geometry. A 132 pt native loupe follows precision
 mode, the first-run coach explains the gesture grammar, active construction has
-a persistent 48+ pt Cancel control, and touch actions provide light haptics.
+a persistent 44+ pt Cancel control, and touch actions provide light haptics.
+The native settings sheet can put the options and construction controls on the
+left or right for thumb reach and can disable haptic feedback. Tool hints stay
+clamped inside the safe area on either side. The UIKit overlays compensate for
+SDL's high-DPI coordinate space, and XCTest asserts the coach, options, and
+active-tool controls remain at least 44 pt on screen. Both settings sheets
+provide an explicit visible Done action on iPad.
 
 SDL's `TOUCH_MOUSE_EVENTS` and `MOUSE_TOUCH_EVENTS` hints are disabled on iOS.
 Raw Simulator tapping produced `finger-down` and `finger-up` probe lines with
@@ -147,28 +154,33 @@ Host verification:
 
 ```text
 ctest --test-dir build/macos-touch -R OpenTTDPad --output-on-failure
-100% tests passed, 16/16
+100% tests passed, 17/17
 
 ctest --test-dir build/macos-touch --output-on-failure
-100% tests passed, 112/112
+100% tests passed, 113/113
 
 ./scripts/test-simulator-ui.sh
-7 XCTest UI scenarios: continuous map drag + precision press; touch-only Rail
+7 XCTest UI scenarios: 44 pt native controls; continuous map drag + precision press; touch-only Rail
 and Road palettes, construction selection, continuous construction drags, and
-cancellation; first-run coach; background/foreground round-trip; native touch
-settings and licenses; ZIP save export/share sheet
+cancellation; live left/right active-tool placement; first-run coach;
+background/foreground round-trip; native touch settings and licenses; ZIP save
+export/share sheet
 ```
 
 All seven scenarios passed on every tested size class (**21/21 invocations**):
 
 | Simulator | Result bundle |
 |---|---|
-| iPad Pro 13-inch (M5) | `build/xcode-derived-data-pro-seven-final/Logs/Test/Test-OpenTTDPadUITests-2026.07.19_05-46-05--0500.xcresult` |
-| iPad mini (A17 Pro) | `build/xcode-derived-data-mini-seven/Logs/Test/Test-OpenTTDPadUITests-2026.07.19_05-24-44--0500.xcresult` |
-| iPad (A16) | `build/xcode-derived-data-base-final-seven/Logs/Test/Test-OpenTTDPadUITests-2026.07.19_05-21-11--0500.xcresult` |
+| iPad Pro 13-inch (M5) | `build/xcode-derived-data-ui/Logs/Test/Test-OpenTTDPadUITests-2026.07.19_08-29-35--0500.xcresult` |
+| iPad (A16) | `build/xcode-derived-data-ui/Logs/Test/Test-OpenTTDPadUITests-2026.07.19_08-32-41--0500.xcresult` |
+| iPad mini (A17 Pro) | `build/xcode-derived-data-ui/Logs/Test/Test-OpenTTDPadUITests-2026.07.19_08-39-17--0500.xcresult` |
 
-The final icon-complete base-iPad launch log contains none of the earlier
-missing-launch-screen, missing-asset-catalog, or unbalanced-appearance warnings.
+The UI runner resolves and boots the requested Simulator, waits for it to be
+ready, and installs `build/ios-sim/openttd.app` before XCTest. This closes a
+stale-install hole in the earlier harness: every result above exercised the
+exact current binary rather than whatever happened to be installed already.
+The packaged OpenTTDPad app has a native asset catalog, launch-screen metadata,
+and balanced UIKit presentation transitions.
 
 XCTest's coordinate API supplies a true continuous drag in Simulator, while
 the platform-neutral event-stream suite owns gesture boundary semantics. The
@@ -180,6 +192,13 @@ caught a second size-class defect: the wide Pro toolbar and its one-row Road
 menu need different normalized targets than compact iPads. The suite now
 asserts the exact transport palette on every size before construction. Physical
 multitouch, Pencil, and real pointer feel remain hardware gates.
+
+This iteration also caught two native-control defects. SDL's high-DPI window
+coordinates made visually declared 52 pt controls measure only 26 pt to
+XCTest; overlay geometry now scales to real screen points and is guarded by
+minimum-target assertions. iPad action-sheet popovers omit cancel-style actions,
+so Touch Controls and Layout & Feedback now expose a normal Done action instead
+of relying on outside-tap dismissal.
 
 ## Experiment ledger
 

@@ -15,6 +15,8 @@
 #endif
 
 extern "C" void OpenTTDPadEnsureOptionsButton();
+extern "C" void OpenTTDPadRefreshControlPlacement();
+extern "C" bool OpenTTDPadControlsLeftHanded();
 extern "C" void OpenTTDPadSetConstructionPalette(int transport_type);
 extern "C" uint64_t OpenTTDPadTouchSettingsGeneration();
 extern "C" void OpenTTDPadLoadTouchSettings(double *threshold_scale, uint32_t *long_press_ms,

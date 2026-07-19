@@ -1,0 +1,20 @@
+diff --git a/src/video/uikit/SDL_uikitview.m b/src/video/uikit/SDL_uikitview.m
+index 676fedb..ad38caa 100644
+--- a/src/video/uikit/SDL_uikitview.m
++++ b/src/video/uikit/SDL_uikitview.m
+@@ -122,2 +122,5 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
+-        data.uiwindow.rootViewController = nil;
+-        data.uiwindow.rootViewController = data.viewcontroller;
++        if (data.uiwindow.rootViewController != data.viewcontroller) {
++            data.uiwindow.rootViewController = data.viewcontroller;
++        } else if (data.viewcontroller.view != nil) {
++            [data.uiwindow addSubview:data.viewcontroller.view];
++        }
+@@ -144,2 +147,5 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
+-        data.uiwindow.rootViewController = nil;
+-        data.uiwindow.rootViewController = data.viewcontroller;
++        if (data.uiwindow.rootViewController != data.viewcontroller) {
++            data.uiwindow.rootViewController = data.viewcontroller;
++        } else {
++            [data.uiwindow addSubview:data.viewcontroller.view];
++        }

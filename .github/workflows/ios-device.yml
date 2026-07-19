@@ -1,0 +1,31 @@
+name: Unsigned iPad device
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache reference sources
+        uses: actions/cache@v4
+        with:
+          path: ref
+          key: openttdpad-ref-${{ runner.os }}-${{ hashFiles('scripts/bootstrap-reference.sh', 'patches/**') }}
+      - name: Fetch audited inputs
+        run: ./scripts/bootstrap-reference.sh
+      - name: Build unsigned device app
+        run: ./scripts/build-device.sh
+      - name: Package unsigned IPA
+        run: ./scripts/package-ipa.sh
+      - name: Verify release inputs and bundle
+        run: ./scripts/verify-release.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenTTDPad-unsigned
+          path: |
+            build/artifacts/OpenTTDPad-unsigned.ipa
+            build/artifacts/OpenTTDPad-unsigned.ipa.sha256

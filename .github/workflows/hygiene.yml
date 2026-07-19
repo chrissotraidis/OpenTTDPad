@@ -1,0 +1,25 @@
+name: Hygiene
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  release-hygiene:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify tracked assets and release inventory
+        run: ./scripts/verify-release.sh
+      - name: Check shell scripts
+        run: for script in scripts/*.sh; do sh -n "$script"; done
+      - name: Check whitespace
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            git diff --check "origin/$GITHUB_BASE_REF...HEAD" -- . ':(exclude)engine/**'
+          else
+            git diff --check HEAD^..HEAD -- . ':(exclude)engine/**'
+          fi

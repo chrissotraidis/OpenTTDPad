@@ -38,7 +38,7 @@ This PRD was researched on July 19, 2026. Before acting, verify each of the foll
 |---|---|---|
 | Current stable OpenTTD release/tag | 15.3 (2026-04-04) | github.com/OpenTTD/OpenTTD releases |
 | Current testing branch | 16.0-beta2 | same |
-| Minimum CMake version | 3.16 | upstream `CMakeLists.txt` |
+| Minimum CMake version | 3.17 | upstream 15.3 `CMakeLists.txt`; reverified in `UPSTREAM_FACTS.md` |
 | C++ standard required | C++20 | upstream `CMakeLists.txt` |
 | SDL major version used by upstream | SDL2 (`src/video/sdl2_v.cpp`, `sdl2_default_v.cpp`, `sdl2_opengl_v.cpp`) | upstream `src/video/` |
 | Upstream finger-event handling | none (`SDL_FINGERDOWN/UP/MOTION` not handled) | upstream SDL video driver |

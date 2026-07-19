@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme LastUpgradeVersion="2660" version="1.3">
+   <BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES">
+      <BuildActionEntries>
+         <BuildActionEntry buildForTesting="YES" buildForRunning="NO" buildForProfiling="NO" buildForArchiving="NO" buildForAnalyzing="YES">
+            <BuildableReference
+               BuildableIdentifier="primary"
+               BlueprintIdentifier="AD7F83945EF74721958598B6"
+               BuildableName="OpenTTDPadUITests.xctest"
+               BlueprintName="OpenTTDPadUITests"
+               ReferencedContainer="container:@OPENTTDPAD_UI_TEST_PROJECT@"/>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction
+      buildConfiguration="Debug"
+      selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv="YES">
+      <Testables>
+         <TestableReference skipped="NO">
+            <BuildableReference
+               BuildableIdentifier="primary"
+               BlueprintIdentifier="AD7F83945EF74721958598B6"
+               BuildableName="OpenTTDPadUITests.xctest"
+               BlueprintName="OpenTTDPadUITests"
+               ReferencedContainer="container:@OPENTTDPAD_UI_TEST_PROJECT@"/>
+         </TestableReference>
+      </Testables>
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier="primary"
+            BlueprintIdentifier="B5AF96AAC04BA2C608792626"
+            BuildableName="OpenTTDPadUITestHost.app"
+            BlueprintName="OpenTTDPadUITestHost"
+            ReferencedContainer="container:@OPENTTDPAD_UI_TEST_PROJECT@"/>
+      </MacroExpansion>
+   </TestAction>
+   <LaunchAction
+      buildConfiguration="Debug"
+      selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle="0"
+      useCustomWorkingDirectory="NO"
+      ignoresPersistentStateOnLaunch="NO"
+      debugDocumentVersioning="YES"
+      debugServiceExtension="internal"
+      allowLocationSimulation="YES">
+      <BuildableProductRunnable runnableDebuggingMode="0">
+         <BuildableReference
+            BuildableIdentifier="primary"
+            BlueprintIdentifier="B5AF96AAC04BA2C608792626"
+            BuildableName="OpenTTDPadUITestHost.app"
+            BlueprintName="OpenTTDPadUITestHost"
+            ReferencedContainer="container:@OPENTTDPAD_UI_TEST_PROJECT@"/>
+      </BuildableProductRunnable>
+   </LaunchAction>
+   <ProfileAction buildConfiguration="Release" shouldUseLaunchSchemeArgsEnv="YES" savedToolIdentifier="" useCustomWorkingDirectory="NO" debugDocumentVersioning="YES"/>
+   <AnalyzeAction buildConfiguration="Debug"/>
+   <ArchiveAction buildConfiguration="Release" revealArchiveInOrganizer="YES"/>
+</Scheme>

@@ -6,10 +6,26 @@ Device and input matrices, the test catalog with stable IDs, and the usability p
 
 ## 1. Test infrastructure
 
-- **Unit (host-runnable):** `tests/touch/` — gesture state machine fed synthetic event streams, asserting emitted actions (tap vs drag vs pinch vs long-press, threshold edge cases at exactly `DRAG_ACTIVATE_PT`, stagger limits, double-tap windows). Runs in macOS CI on every PR.
+- **Unit (host-runnable):** `engine/src/tests/gesture_state.cpp` — gesture state
+  machine fed synthetic event streams, asserting emitted actions (tap vs drag
+  vs pinch vs long-press), settings changes, 44 pt hit expansion, edge cases,
+  cancellation, momentum, finger-count transition reanchoring, and source
+  separation. Runs in macOS CI on every PR.
 - **Integration:** `tests/file_import/` — sandbox path resolution, atomic-save crash simulation (kill between temp-write and rename ⇒ old file intact), import/export round-trips.
 - **On-device scripted-manual:** checklists below, executed per phase gate and per release candidate; results (video/log links) recorded in `docs/STATUS.md`.
 - **CI smoke:** Simulator boot + launch + first-frame assertion (BR-10).
+
+Current automated Simulator coverage is seven native XCTest scenarios on iPad
+Pro 13-inch, base iPad, and iPad mini: first-run coaching; continuous viewport
+drag and precision hold; exact Rail palette, Autorail construction drag, and
+Cancel; exact Road palette, Autoroad construction drag, and Cancel; lifecycle
+background/foreground recovery; touch settings, left/right control placement,
+plus licenses; and ZIP save
+export. The 2026-07-19 matrix passed **21/21**. Result-bundle paths and the
+hardware-only limits of that evidence are recorded in `STATUS.md`.
+The runner boots and installs `build/ios-sim/openttd.app` before every suite,
+and the UI assertions enforce 44 pt minimums for the coach, persistent options,
+and active-tool Cancel controls.
 
 ## 2. Device matrix
 

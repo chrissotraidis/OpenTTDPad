@@ -6,39 +6,43 @@ The reproducible-build contract: toolchain, the two-stage cross-compile, depende
 
 ## 1. Baseline facts (verify at P0.0)
 
-Upstream builds with CMake (≥ 3.16 at research time) and a C++20 compiler; the generic flow is `cmake .. && make`. Optional/encouraged dependencies: zlib, liblzma, libpng, libcurl, SDL2, FreeType, HarfBuzz, ICU. Upstream compiles conditional video drivers: SDL2 default and SDL2-OpenGL when SDL2 is present; Cocoa separately for macOS.
+OpenTTD 15.3 requires CMake 3.17 and a C++20 compiler; the generic flow is
+`cmake .. && cmake --build .`. Optional/encouraged dependencies include zlib,
+liblzma, libpng, libcurl, SDL2, FreeType, HarfBuzz, and ICU. The pinned iPad
+pipeline has each release-relevant dependency enabled; see
+`THIRD_PARTY_NOTICES.md` and `UPSTREAM_FACTS.md` for exact versions.
 
 ## 2. The cross-compilation shape
 
 **BR-1.** OpenTTD's build runs generated host tools (string/settings generators) *during* the build. Cross-compiling therefore uses a **two-stage build**, the same pattern upstream's emscripten target uses:
 
-```bash
+```sh
 # Stage 1 — native macOS host tools
-cmake -B build-host -DOPTION_TOOLS_ONLY=ON        # verify current option name upstream
-cmake --build build-host --target tools
+cmake -S engine -B build/host-tools -G Ninja -DOPTION_TOOLS_ONLY=ON
+cmake --build build/host-tools --target tools
 
-# Stage 2 — iOS device build, consuming stage-1 tools
-cmake -B build-ios -G Xcode \
-  -DCMAKE_SYSTEM_NAME=iOS \
-  -DCMAKE_OSX_ARCHITECTURES=arm64 \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET=<min from doc 01 §8> \
-  -DCMAKE_TOOLCHAIN_FILE=../cmake/ios.toolchain.cmake \
-  -DHOST_BINARY_DIR=$PWD/build-host \               # verify current variable name upstream
-  ../engine
+# Stage 2 — the checked-in scripts build every static dependency for the chosen
+# SDK, then configure OpenTTD with HOST_BINARY_DIR=build/host-tools.
+./scripts/build-simulator.sh   # iphonesimulator, arm64, iPadOS 17+
+./scripts/build-device.sh      # iphoneos, arm64, unsigned
 ```
 
 The exact option/variable names for the host-tool handoff must be read from upstream's `cmake/` and emscripten config at P0.2 and recorded in `UPSTREAM_FACTS.md` — do not guess them.
 
-**BR-2.** `cmake/ios.toolchain.cmake` (ours) sets: platform/SDK selection (device vs simulator), arm64-only, minimum OS, bitcode off, signing left to Xcode, and find-root behavior so host libraries never leak into the device build.
+**BR-2.** The build scripts pass platform/SDK selection, arm64-only, iPadOS
+17.0 minimum, and cross-root dependency paths directly to CMake. The device
+bundle remains unsigned, and host generators enter only through
+`HOST_BINARY_DIR`.
 
 **BR-3.** Build targets: iOS Simulator arm64; physical iPad arm64; Debug / RelWithDebInfo / Release configurations; unsigned device archive; unsigned IPA packaging where technically appropriate.
 
 ## 3. Dependency strategy
 
-**BR-4.** All third-party libraries are **static** for iOS (no dylib bundling complexity). Two acceptable approaches — P0.2 picks one and records an ADR:
+**BR-4.** All third-party libraries are **static** for iOS (no dylib bundling
+complexity). P0.2 selected scripted source builds pinned by tag and checksum.
 
-- **Option A — vcpkg** with the `arm64-ios` (and simulator) triplets: upstream already supports vcpkg; gives pinned, manifest-recorded versions.
-- **Option B — scripted source builds** of each dependency in `scripts/deps/`, pinned by tag + checksum.
+The scripts build SDL, xz/liblzma, libpng, curl/Mbed TLS, FreeType, and HarfBuzz.
+They use SDK zlib and the SDK ICU library with matching pinned ICU headers.
 
 **BR-5.** Dependency tiers for iOS:
 
@@ -48,10 +52,12 @@ The exact option/variable names for the host-tool handoff must be read from upst
 | zlib | required | may use the SDK's zlib |
 | liblzma | required | modern desktop saves use it — required for FR-7 |
 | libpng | required | heightmaps, screenshots |
-| libcurl | required (Phase 3+) | content downloads; confirm whether upstream's HTTP layer needs it on this platform or an NSURLSession shim is cleaner — decide at P3.4 |
-| FreeType + HarfBuzz + ICU | deferred-on | off for the spike (sprite fonts suffice); required before release for non-Latin text — enable during Phase 3 |
+| libcurl + Mbed TLS | enabled | static HTTPS stack using the packaged, dated Mozilla CA extract; peer verification remains on |
+| FreeType + HarfBuzz + ICU | enabled | static FreeType/HarfBuzz plus SDK `libicucore` paired with pinned ICU 78.1 headers; CoreText chooses language-capable system fallback fonts |
 
-**BR-6.** A machine-readable dependency manifest (name, version, source URL, checksum, license) is generated into `THIRD_PARTY_NOTICES.md` tooling ([11-licensing-distribution.md](11-licensing-distribution.md)).
+**BR-6.** The checked-in dependency inventory records name, version, source,
+role, and license in `THIRD_PARTY_NOTICES.md`. `scripts/verify-release.sh`
+cross-checks every required component and packaged bundle resource.
 
 ## 4. Developer experience
 
@@ -61,10 +67,12 @@ The exact option/variable names for the host-tool handoff must be read from upst
 git clone <repository>
 cd OpenTTDPad
 ./scripts/bootstrap-ios.sh
-open build/ios/OpenTTD.xcodeproj
+./scripts/run-simulator.sh
 ```
 
-then: select team → select connected iPad → Run.
+For hardware, run `./scripts/build-device.sh`, then sign the generated app with
+the maintainer's own Apple identity/profile. CI and this repository carry no
+signing secrets.
 
 **BR-8.** `scripts/bootstrap-ios.sh` shall: verify Xcode + CMake presence and versions; initialize/fetch dependencies (per BR-4 option); fetch or verify pinned SDL2; fetch free base content into the packaging tree (with license audit stamp, CO-3); run both build stages to generate the Xcode project; print signing instructions; and **never modify global system configuration**.
 
@@ -75,7 +83,9 @@ then: select team → select connected iPad → Run.
 | `scripts/bootstrap-ios.sh` | BR-8 |
 | `scripts/build-simulator.sh` | clean CLI Simulator build + boot smoke test where possible |
 | `scripts/build-device.sh` | clean CLI unsigned device build (`CODE_SIGNING_ALLOWED=NO`) |
+| `scripts/compile-app-assets.sh` | compile/merge the native iPad icon asset catalog during packaging |
 | `scripts/package-ipa.sh` | unsigned IPA from the device archive, plus checksums |
+| `scripts/package-source-release.sh` | exact tracked tree, dependency sources, free input archives, downstream patch series, and checksums |
 | `scripts/sync-upstream.sh` | upstream subtree pull + patch reapply ([08-repository-strategy.md](08-repository-strategy.md) §5) |
 
 All scripts are idempotent and fail loudly with actionable messages.

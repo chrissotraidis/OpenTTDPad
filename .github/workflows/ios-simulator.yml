@@ -1,0 +1,41 @@
+name: iPad Simulator
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache reference sources
+        uses: actions/cache@v4
+        with:
+          path: ref
+          key: openttdpad-ref-${{ runner.os }}-${{ hashFiles('scripts/bootstrap-reference.sh', 'patches/**') }}
+      - name: Fetch audited inputs
+        run: ./scripts/bootstrap-reference.sh
+      - name: Build Simulator app
+        run: ./scripts/build-simulator.sh
+      - name: Verify app bundle
+        run: ./scripts/verify-release.sh
+      - name: Launch and capture first frame on Apple Silicon runners
+        if: runner.arch == 'ARM64'
+        run: |
+          device=$(xcrun simctl list devices available | sed -nE '/iPad.*\((Shutdown|Booted)\)/s/.*\(([0-9A-F-]{36})\).*/\1/p' | head -1)
+          test -n "$device"
+          xcrun simctl boot "$device" || true
+          xcrun simctl bootstatus "$device" -b
+          xcrun simctl install "$device" build/ios-sim/openttd.app
+          xcrun simctl launch "$device" org.openttd.OpenTTDPad -g -G 1
+          sleep 5
+          xcrun simctl io "$device" screenshot build/ci-first-frame.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenTTDPad-Simulator
+          path: |
+            build/ios-sim/openttd.app
+            build/ci-first-frame.png
+          if-no-files-found: warn

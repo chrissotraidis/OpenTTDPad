@@ -70,7 +70,7 @@ TWO_FINGER_PENDING
  ├─ both up within TWO_TAP_MAX_MS, low movement ──► emit SECONDARY_CLICK → IDLE
  ├─ inter-finger distance delta > PINCH_ACTIVATE_PT ─► PINCHING
  ├─ centroid movement > DRAG_ACTIVATE_PT ─────────► PANNING (two-finger)
-PANNING      ── any finger count change re-evaluates; all up → IDLE
+PANNING      ── one finger up reanchors at the remaining finger; all up → IDLE
 CONSTRUCTING ── finger up commits → IDLE; second finger down → abort construct, → TWO_FINGER_PENDING
 PINCHING     ── continuous zoom; one finger up → PANNING; all up → IDLE
 PRECISION    ── finger up → act → IDLE; cancel → IDLE
@@ -82,6 +82,7 @@ Notes:
 - **5.2 Palm/edge rejection:** fingers landing in the outermost `EDGE_REJECT_PT` band participate only in system gestures; ignore for game input.
 - **5.3 Momentum:** viewport panning gets standard deceleration (flick momentum) matching platform feel; construction drags never have momentum.
 - **5.4 Pinch zoom (TI-6):** continuous from the user's perspective even though OpenTTD zoom is discrete — accumulate scale factor and step the engine zoom when crossing per-level thresholds, keeping the zoom centered on the finger midpoint (translate viewport so the world point under the midpoint stays under it). The Android fork demonstrates threshold-based pinch-to-wheel translation; reimplement (prime directive 6).
+- **5.5 Finger-count transitions:** when a two-finger pan or pinch drops to one finger, the recognizer resets its centroid and velocity at the remaining contact before continuing. This prevents a discontinuous viewport jump and prevents two-finger momentum leaking into the one-finger gesture.
 
 ## 6. Tunable constants (single source of truth)
 
@@ -141,6 +142,14 @@ Concrete numeric scale values are chosen at task P2.8 by on-device evaluation an
 | Haptics | on (light impact on construction commit, selection change) |
 | Left-handed toolbar preference | off |
 | Auto-hide touch hints when pointer connected | on |
+
+The native Touch Controls sheet currently exposes gesture response,
+long-press duration, touch-target expansion, map momentum, left/right control
+placement, haptics, and touch-tip reset. Left/right placement moves both the
+always-available options control and the active construction Cancel affordance;
+the nearby tool hint is clamped inside the safe area. Both settings levels use
+an explicit visible Done action because iPad action-sheet popovers omit
+cancel-style actions.
 
 ## 9. Touch onboarding hints
 

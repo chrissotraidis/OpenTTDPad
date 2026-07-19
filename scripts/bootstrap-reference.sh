@@ -113,6 +113,9 @@ mkdir -p "$extract_dir/opengfx" "$extract_dir/opensfx" "$extract_dir/openmsx"
 unzip -qo "$game_dir/opengfx-8.0-all.zip" -d "$extract_dir/opengfx"
 unzip -qo "$game_dir/opensfx-1.0.3-all.zip" -d "$extract_dir/opensfx"
 unzip -qo "$game_dir/openmsx-0.4.2-all.zip" -d "$extract_dir/openmsx"
+tar -xf "$extract_dir/opengfx/opengfx-8.0.tar" -C "$extract_dir/opengfx"
+tar -xf "$extract_dir/opensfx/opensfx-1.0.3.tar" -C "$extract_dir/opensfx"
+tar -xf "$extract_dir/openmsx/openmsx-0.4.2.tar" -C "$extract_dir/openmsx"
 if [ ! -f "$game_dir/timgm6mb-soundfont_1.3/TimGM6mb.sf2" ]; then
     tar -xzf "$game_dir/timgm6mb-soundfont_1.3.orig.tar.gz" -C "$game_dir"
 fi

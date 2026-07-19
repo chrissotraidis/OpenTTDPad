@@ -2145,7 +2145,7 @@ bool ReadLanguagePack(const LanguageMetadata *lang)
 
 /* Win32 implementation in win32.cpp.
  * OS X implementation in os/macosx/macos.mm. */
-#if !(defined(_WIN32) || defined(__APPLE__))
+#if !(defined(_WIN32) || (defined(__APPLE__) && !defined(OPENTTDPAD_IOS)))
 /**
  * Determine the current charset based on the environment
  * First check some default values, after this one we passed ourselves

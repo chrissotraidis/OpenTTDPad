@@ -1,6 +1,6 @@
 # Implementation status
 
-Updated: **2026-07-18**
+Updated: **2026-07-19**
 
 ## Environment
 
@@ -8,28 +8,146 @@ Updated: **2026-07-18**
 - macOS: 26.5.2 (25F84)
 - Xcode: 26.6 (17F113)
 - iPhoneOS / Simulator SDK: 26.5 / 26.5
-- Simulator runtimes: iOS 18.5 and 26.5; required iPad Pro, Air, base iPad,
-  and mini profiles are installed
-- Apple Clang: 21.0.0
-- CMake: 4.4.0; Ninja: 1.13.2; Homebrew: 6.x; GitHub CLI: 2.93.0
-- Physical iPad: not yet connected or verified; every hardware-only experiment
-  remains open
+- Active Simulator: iPad Pro 13-inch (M5), iOS 26.5,
+  `68016FEA-1887-4E05-A7F4-B26EC8572B8A`
+- Apple Clang: 21.0.0; CMake: 4.4.0; Ninja: 1.13.2
+- Physical iPad: not connected. Hardware-only acceptance remains open and is
+  never represented as a Simulator pass.
 
 ## Roadmap
 
-- [x] P0.0 — fact re-verification — done 2026-07-18 — see
-  `UPSTREAM_FACTS.md`
-- [x] P0.1 — macOS baseline — done 2026-07-18 — OpenTTD 15.3 Release build,
-  96/96 tests, verified free content, deterministic save/reload
-- [ ] P0.2 — iOS toolchain build — in progress
-- [ ] P0.3 — SDL iOS first frame
-- [ ] P0.4 — input probe
-- [ ] Gate G0 — blocked on P0.2–P0.4 and physical-device experiments
-- [ ] Phases 1–5 — not started by design
+- [x] P0.0 — fact re-verification — `UPSTREAM_FACTS.md`
+- [x] P0.1 — untouched macOS baseline — OpenTTD 15.3 Release, 96/96 tests,
+  free content, deterministic save/reload
+- [x] P0.2 build slices — host tools plus SDL 2.32.10, xz/liblzma 5.8.3,
+  libpng 1.6.58, curl 8.21.0, Mbed TLS 3.6.6, SDK zlib, and OpenTTD link as
+  arm64 Mach-O for Simulator; the unsigned arm64 device bundle is built by the
+  same pinned dependency pipeline
+- [x] P0.3 Simulator slice — scene-based native shell, landscape/fullscreen,
+  free offline content, first playable game, manual save, force-terminate,
+  relaunch, and load
+- [~] P0.4 — raw input probe and explicit touch routing are working in
+  Simulator; genuine physical pointer, Pencil, wheel, and hardware keyboard
+  still require hardware
+- [ ] Gate G0 — **not passed** until physical EXP-2/6/8 evidence exists
+- [~] Phase 2 Simulator engineering — deliberately proceeding under the
+  recorded execution-order deviation; this does not waive G0 or release gates
+- [~] Phase 3 Simulator engineering — first-run touch coaching, online content
+  over verified HTTPS, and bundled notices are working; Files import/export,
+  settings UI, international text dependencies, and music playback remain
 
-## P0.1 evidence
+## Native build and packaging proof
 
-Configuration and build:
+The tracked engine subtree is based on upstream OpenTTD 15.3 commit
+`14ec60f2486f43839dbdb05d1939a7a69c5a466e`. The iPad Simulator target links
+all 839 original engine actions plus the downstream iOS/touch sources. The
+packaged executable is arm64 and declares the iOS Simulator platform with a
+17.0 minimum deployment target.
+
+```sh
+./scripts/bootstrap-reference.sh
+./scripts/build-simulator.sh
+./scripts/run-simulator.sh
+file build/ios-sim/openttd.app/openttd
+vtool -show-build build/ios-sim/openttd.app/openttd
+```
+
+The app bundle contains generated OpenTTD data/languages/scripts, GPL source
+notice, OpenGFX 8.0, OpenSFX 1.0.3, OpenMSX 0.4.2, and complete dependency
+notices. HTTPS uses static curl/Mbed TLS plus the dated Mozilla CA extract in
+`cacert.pem`; the live Online Content catalog populated in Simulator. The
+Simulator bundle is ad-hoc signed. No commercial TTD files are present.
+
+## Simulator shell and persistence evidence
+
+The first scene implementation rendered black because SDL 2's legacy window
+was not attached to the active `UIWindowScene`. `OpenTTDPadSceneDelegate` now
+records the active scene and the SDL window is attached after creation. A
+second Simulator defect placed the game toolbar under the status bar; the iOS
+window is now explicitly fullscreen/borderless and defers system gestures.
+
+Persistence procedure executed on the iPad Pro Simulator:
+
+1. Generate a playable game using direct screen taps.
+2. Open Save Game from the top toolbar.
+3. Focus the save-name field; confirm the iPad software keyboard appears and
+   accepts text.
+4. Save into `Documents/OpenTTD/save` and confirm the `.sav` exists in the
+   resolved CoreSimulator app container.
+5. Force-terminate the process and launch a new process.
+6. Open Load Game, select the persisted file, and restore the same map.
+
+Evidence:
+
+- [first native Simulator frame](evidence/p0-ios-first-frame.png)
+- [playable free-content game](evidence/p0-ios-playable-game.png)
+- [scene-based landscape frame](evidence/p0-ios-scene-landscape.png)
+- [save restored after process relaunch](evidence/p0-ios-reloaded-save.png)
+- [HTTPS Online Content catalog](evidence/p3-ios-online-content.png)
+
+The initial dependency spike omitted liblzma and could not reopen an LZMA save.
+That failure was captured in the Simulator console and corrected by adding
+pinned static xz/liblzma 5.8.3. Pinned static libpng 1.6.58 was added at the
+same time for screenshots and heightmaps.
+
+## Explicit touch router
+
+`src/touch/gesture_state.*` is platform-neutral. `touch_settings.hpp` is the
+single source of truth for the thresholds specified by doc 03. The recognizer
+currently emits:
+
+- direct tap and double-tap;
+- delayed map pan only after the deliberate-drag threshold;
+- desktop-primary drag for UI widgets and active construction tools;
+- unconditional two-finger pan;
+- two-finger secondary click;
+- thresholded pinch zoom around the current centroid;
+- long-press precision entry/move/commit events;
+- momentum only after viewport pan;
+- construction abort when a second finger lands;
+- cancellation and button-state cleanup on focus loss.
+
+Touch-only hit testing expands eligible undersized controls to at least 44 pt
+without changing their drawn geometry. A 132 pt native loupe follows precision
+mode, the first-run coach explains the gesture grammar, active construction has
+a persistent 48+ pt Cancel control, and touch actions provide light haptics.
+
+SDL's `TOUCH_MOUSE_EVENTS` and `MOUSE_TOUCH_EVENTS` hints are disabled on iOS.
+Raw Simulator tapping produced `finger-down` and `finger-up` probe lines with
+no synthetic mouse-button lines, while translated taps continued to operate
+the UI. Real mouse/trackpad events remain on upstream's unchanged mouse path.
+
+Host verification:
+
+```text
+ctest --test-dir build/macos-touch -R OpenTTDPad --output-on-failure
+100% tests passed, 15/15
+
+./scripts/test-simulator-ui.sh
+3 XCTest UI scenarios: continuous drag + precision press; first-run coach;
+background/foreground round-trip
+```
+
+XCTest's coordinate API supplies a true continuous drag in Simulator, while
+the platform-neutral event-stream suite owns gesture boundary semantics.
+Physical multitouch, Pencil, and real pointer feel remain hardware gates.
+
+## Experiment ledger
+
+| Experiment | State | Evidence / remaining gate |
+|---|---|---|
+| EXP-1 iOS arm64 compile | Build pass | arm64 Simulator and unsigned arm64 device bundles link; hardware install remains |
+| EXP-2 visible iPad window | Partial | scene-based Simulator frame/playable map; physical iPad remains |
+| EXP-3 software rendering | Partial | live Simulator gameplay; device performance/thermal remains |
+| EXP-4 free content | Partial | all three audited free sets load offline in Simulator; physical remains |
+| EXP-5 sandbox writes | Simulator pass | `.sav` confirmed in sandbox and loaded after force-terminate/relaunch |
+| EXP-6 physical pointer | Open | genuine mouse/trackpad hardware required |
+| EXP-7 touch separation | Simulator pass | raw finger-only probe after both SDL synthesis hints disabled |
+| EXP-8 software keyboard | Partial | save-name field shown and typed in Simulator; device/hardware keyboard remains |
+| EXP-9 lifecycle loop | Open | physical iPad required |
+| EXP-10 touch construction | In progress | host recognizer and continuous-drag XCTest pass; full touch-only route and five-person trial remain |
+
+## P0.1 baseline proof
 
 ```sh
 cmake -S ref/OpenTTD -B ref/OpenTTD/build-macos -G Ninja \
@@ -38,56 +156,14 @@ cmake --build ref/OpenTTD/build-macos --parallel 8
 ctest --test-dir ref/OpenTTD/build-macos --output-on-failure
 ```
 
-Result: Release executable linked successfully. `ctest` passed **96/96** in
-112.21 seconds.
-
-Content verification:
-
-```sh
-shasum -a 256 ref/game-files/*.zip
-ref/OpenTTD/build-macos/openttd -X -h
-```
-
-Result: all CDN checksums matched `UPSTREAM_FACTS.md`; the isolated build found
-OpenGFX 8.0, OpenSFX 1.0.3, and OpenMSX 0.4.2.
-
-Save proof:
-
-```text
-Map successfully saved to
-'/Users/chrissotraidis/GitHub/OpenTTDPad/ref/game-files/baseline-p0.sav.sav'.
-```
-
-The save is 81 KiB, reports savegame version 362, and was visibly reopened by
-the packaged 15.3 app:
-
-- [deterministic new game](evidence/p0-macos-new-game.png)
-- [reopened baseline save](evidence/p0-macos-reloaded-save.png)
-
-Packaging note: CPack's Bundle generator successfully assembled `OpenTTD.app`
-but the final DMG step could not attach an HFS+ image in this environment.
-CPack also rewrites bundled dylib install names after their original signing;
-explicitly signing inner dylibs, then the executable, then the outer app made
-the local bundle valid and launchable. This does not affect the engine build.
-
-## Experiment ledger
-
-| Experiment | State | Evidence / remaining gate |
-|---|---|---|
-| EXP-1 iOS arm64 compile | Pending | P0.2 |
-| EXP-2 visible iPad window | Pending | Simulator plus physical iPad required |
-| EXP-3 software rendering | Partial | macOS gameplay rendered; iPad performance pending |
-| EXP-4 free content | Partial | verified and loaded on macOS; iPad bundle pending |
-| EXP-5 sandbox writes | Partial | local deterministic save/reload passed; iPad sandbox pending |
-| EXP-6 physical pointer | Pending | physical iPad hardware required |
-| EXP-7 touch separation | Pending | P0.4 |
-| EXP-8 software keyboard | Pending | P0.4 |
-| EXP-9 lifecycle loop | Pending | physical iPad required |
-| EXP-10 touch construction | Pending | Phase 2 usability trials |
+Result: Release linked; upstream `ctest` passed **96/96** in 112.21 seconds.
+The isolated build found OpenGFX 8.0, OpenSFX 1.0.3, and OpenMSX 0.4.2. See
+[the generated map](evidence/p0-macos-new-game.png) and
+[the reopened save](evidence/p0-macos-reloaded-save.png).
 
 ## Current next proof
 
-Vendor the exact 15.3 engine base into `engine/`, preserve GPLv2 provenance,
-generate native host tools, build pinned SDL 2.32.10 and minimum static
-dependencies for arm64 Simulator/device, and close EXP-1 before shell or touch
-product work expands.
+Complete native Files import/export, settings, music, and international-text
+support; then exercise the full touch-only road/rail/vehicle/orders route and
+lifecycle matrix across three Simulator device classes. Physical-only gates
+stay open until real hardware is connected.

@@ -8,9 +8,9 @@ add_files(
     string_osx.cpp
     string_osx.h
     survey_osx.cpp
-    CONDITION APPLE
+    CONDITION APPLE AND NOT OPENTTDPAD_IOS
 )
 
-if(APPLE)
+if(APPLE AND NOT OPENTTDPAD_IOS)
     target_sources(openttd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/osx_main.cpp)
 endif()

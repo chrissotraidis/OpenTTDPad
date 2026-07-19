@@ -23,7 +23,7 @@
 #	define _CRT_NONSTDC_NO_WARNINGS
 #endif
 
-#if defined(__APPLE__)
+#if defined(__APPLE__) && !defined(OPENTTDPAD_IOS)
 #	include "os/macosx/osx_stdafx.h"
 #else
 /* It seems that we need to include stdint.h before anything else
@@ -272,7 +272,7 @@ char (&ArraySizeHelper(T (&array)[N]))[N];
 
 
 /* take care of some name clashes on MacOS */
-#if defined(__APPLE__)
+#if defined(__APPLE__) && !defined(OPENTTDPAD_IOS)
 #	define GetString OTTD_GetString
 #	define DrawString OTTD_DrawString
 #	define CloseConnection OTTD_CloseConnection

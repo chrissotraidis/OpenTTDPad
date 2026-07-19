@@ -18,9 +18,281 @@
 #include "../core/utf8.hpp"
 #include "../fileio_func.h"
 #include "../framerate_type.h"
+#include "../network/network.h"
+#include "../saveload/saveload.h"
+#include "../settings_func.h"
+#include "../tilehighlight_func.h"
+#include "../touch/gesture_state.hpp"
+#include "../touch/hit_test.hpp"
+#include "../viewport_func.h"
 #include "../window_func.h"
+#include "../window_gui.h"
 #include "sdl2_v.h"
 #include <SDL.h>
+#ifdef OPENTTDPAD_IOS
+extern "C" void OpenTTDPadAttachSDLWindowToScene(SDL_Window *window);
+extern "C" void OpenTTDPadHaptic(int kind);
+extern "C" void OpenTTDPadPrecisionLoupe(bool visible, double x, double y, double magnification);
+extern "C" void OpenTTDPadMaybeShowTouchHint();
+extern "C" void OpenTTDPadSetToolOverlay(bool active);
+
+static OpenTTDPad::Touch::GestureState _openttdpad_gestures;
+static bool _openttdpad_added_background_pause = false;
+static bool _openttdpad_is_background = false;
+static bool _openttdpad_momentum_active = false;
+static OpenTTDPad::Touch::TouchPoint _openttdpad_momentum_velocity{};
+static uint32_t _openttdpad_momentum_last_tick = 0;
+
+static void OpenTTDPadInputProbe(const char *kind, int64_t source, double x, double y)
+{
+	fmt::print(stderr, "OpenTTDPad input: {} source={} x={:.3f} y={:.3f}\n", kind, source, x, y);
+	fflush(stderr);
+}
+
+static Point OpenTTDPadTouchPoint(const SDL_TouchFingerEvent &event)
+{
+	return {
+		static_cast<int>(std::clamp(event.x, 0.0f, 1.0f) * (_screen.width - 1)),
+		static_cast<int>(std::clamp(event.y, 0.0f, 1.0f) * (_screen.height - 1)),
+	};
+}
+
+static bool OpenTTDPadTouchIsInRejectedEdge(Point point)
+{
+	const double edge = _openttdpad_gestures.GetSettings().edge_reject;
+	return point.x < edge || point.y < edge || point.x >= _screen.width - edge || point.y >= _screen.height - edge;
+}
+
+static bool OpenTTDPadTouchUsesDirectDrag(Point point)
+{
+	Window *window = FindWindowFromPt(point.x, point.y);
+	if (window == nullptr) return true;
+	const bool over_map = IsPtInWindowViewport(window, point.x, point.y) != nullptr;
+	const bool tool_active = _thd.place_mode != HT_NONE;
+	return !over_map || tool_active;
+}
+
+static bool OpenTTDPadTouchIsOverMap(Point point)
+{
+	Window *window = FindWindowFromPt(point.x, point.y);
+	return window != nullptr && IsPtInWindowViewport(window, point.x, point.y) != nullptr;
+}
+
+static void OpenTTDPadMoveCursor(Point point)
+{
+	_cursor.UpdateCursorPosition(point.x, point.y);
+	HandleMouseEvents();
+}
+
+static bool OpenTTDPadIsExpandableWidget(const NWidgetBase *widget)
+{
+	if (widget == nullptr || widget->GetIndex() < 0) return false;
+	switch (widget->type & WWT_MASK) {
+		case WWT_IMGBTN:
+		case WWT_IMGBTN_2:
+		case WWT_ARROWBTN:
+		case WWT_TEXTBTN:
+		case WWT_TEXTBTN_2:
+		case WWT_BOOLBTN:
+		case WWT_IMGTEXTBTN:
+		case WWT_DEBUGBOX:
+		case WWT_SHADEBOX:
+		case WWT_DEFSIZEBOX:
+		case WWT_STICKYBOX:
+		case WWT_RESIZEBOX:
+		case WWT_CLOSEBOX:
+		case WWT_DROPDOWN:
+		case WWT_EDITBOX:
+			return true;
+		default:
+			return false;
+	}
+}
+
+static Point OpenTTDPadExpandedTouchPoint(Point point)
+{
+	Window *window = FindWindowFromPt(point.x, point.y);
+	if (window == nullptr || IsPtInWindowViewport(window, point.x, point.y) != nullptr) return point;
+
+	std::vector<OpenTTDPad::Touch::HitTarget> targets;
+	targets.reserve(window->widget_lookup.size());
+	for (const auto &[id, widget] : window->widget_lookup) {
+		if (!OpenTTDPadIsExpandableWidget(widget) || window->IsWidgetDisabled(id)) continue;
+		const Rect rect = widget->GetCurrentRect();
+		targets.push_back({id,
+			static_cast<double>(window->left + rect.left), static_cast<double>(window->top + rect.top),
+			static_cast<double>(window->left + rect.right), static_cast<double>(window->top + rect.bottom)});
+	}
+
+	const int target_id = OpenTTDPad::Touch::ResolveExpandedHitTarget(
+		{static_cast<double>(point.x), static_cast<double>(point.y)}, targets,
+		_openttdpad_gestures.GetSettings().minimum_target);
+	if (target_id < 0) return point;
+
+	const auto target = std::ranges::find_if(targets,
+		[target_id](const auto &candidate) { return candidate.id == target_id; });
+	if (target == std::end(targets)) return point;
+	const auto resolved = OpenTTDPad::Touch::ClampToHitTarget(
+		{static_cast<double>(point.x), static_cast<double>(point.y)}, *target);
+	return {static_cast<int>(std::round(resolved.x)), static_cast<int>(std::round(resolved.y))};
+}
+
+static void OpenTTDPadPrimaryClick(Point point)
+{
+	point = OpenTTDPadExpandedTouchPoint(point);
+	OpenTTDPadMoveCursor(point);
+	_left_button_down = true;
+	HandleMouseEvents();
+	_left_button_down = false;
+	_left_button_clicked = false;
+	HandleMouseEvents();
+}
+
+static void OpenTTDPadShowPrecisionLoupe(OpenTTDPad::Touch::TouchPoint crosshair)
+{
+	OpenTTDPadPrecisionLoupe(true,
+		std::clamp(crosshair.x / std::max(1, _screen.width), 0.0, 1.0),
+		std::clamp((crosshair.y + _openttdpad_gestures.GetSettings().precision_offset) /
+			std::max(1, _screen.height), 0.0, 1.0),
+		_openttdpad_gestures.GetSettings().precision_magnification);
+}
+
+static void OpenTTDPadStopMomentum()
+{
+	_openttdpad_momentum_active = false;
+	_openttdpad_momentum_velocity = {};
+	_openttdpad_momentum_last_tick = 0;
+}
+
+static bool OpenTTDPadAdvanceMomentum(uint32_t timestamp_ms)
+{
+	if (!_openttdpad_momentum_active || _openttdpad_momentum_last_tick == 0) return false;
+	const uint32_t elapsed_ms = std::min<uint32_t>(timestamp_ms - _openttdpad_momentum_last_tick, 50);
+	_openttdpad_momentum_last_tick = timestamp_ms;
+	if (elapsed_ms == 0) return false;
+
+	Point delta{
+		static_cast<int>(std::round(-_openttdpad_momentum_velocity.x * elapsed_ms)),
+		static_cast<int>(std::round(-_openttdpad_momentum_velocity.y * elapsed_ms)),
+	};
+	Window *window = GetMainWindow();
+	if (window == nullptr || window->viewport == nullptr) {
+		OpenTTDPadStopMomentum();
+		return false;
+	}
+	if (delta.x != 0 || delta.y != 0) window->OnScroll(delta);
+
+	const double frame_count = elapsed_ms / 16.6667;
+	const double decay = std::pow(_openttdpad_gestures.GetSettings().momentum_decay_per_frame, frame_count);
+	_openttdpad_momentum_velocity.x *= decay;
+	_openttdpad_momentum_velocity.y *= decay;
+	if (std::hypot(_openttdpad_momentum_velocity.x, _openttdpad_momentum_velocity.y) <
+			_openttdpad_gestures.GetSettings().momentum_min_velocity) {
+		OpenTTDPadStopMomentum();
+	}
+	return delta.x != 0 || delta.y != 0;
+}
+
+static void OpenTTDPadApplyTouchActions(const std::vector<OpenTTDPad::Touch::Action> &actions)
+{
+	using OpenTTDPad::Touch::ActionType;
+	for (const auto &action : actions) {
+		Point point{static_cast<int>(std::round(action.position.x)), static_cast<int>(std::round(action.position.y))};
+		switch (action.type) {
+			case ActionType::Tap:
+				OpenTTDPadPrimaryClick(point);
+				break;
+			case ActionType::DoubleTap:
+				/* The first tap is delivered immediately. The recognizer emits
+				 * DoubleTap for the second one, so one additional click lets
+				 * OpenTTD's native click timing produce MC_DOUBLE_LEFT. */
+				OpenTTDPadPrimaryClick(point);
+				break;
+			case ActionType::SecondaryClick:
+				OpenTTDPadMoveCursor(point);
+				_right_button_down = true;
+				_right_button_clicked = true;
+				HandleMouseEvents();
+				_right_button_down = false;
+				HandleMouseEvents();
+				break;
+			case ActionType::PanBegin:
+				OpenTTDPadStopMomentum();
+				/* Enter viewport scrolling without dispatching a right click.
+				 * PanMove will preserve the first deliberate drag delta. */
+				_cursor.UpdateCursorPosition(point.x, point.y);
+				_right_button_down = true;
+				_right_button_clicked = false;
+				_scrolling_viewport = true;
+				_cursor.fix_at = false;
+				break;
+			case ActionType::PanMove:
+				OpenTTDPadMoveCursor(point);
+				break;
+			case ActionType::PanEnd:
+				OpenTTDPadMoveCursor(point);
+				_right_button_down = false;
+				HandleMouseEvents();
+				if (std::hypot(action.delta.x, action.delta.y) >=
+						_openttdpad_gestures.GetSettings().momentum_min_velocity) {
+					_openttdpad_momentum_active = true;
+					_openttdpad_momentum_velocity = action.delta;
+					_openttdpad_momentum_last_tick = SDL_GetTicks();
+				}
+				break;
+			case ActionType::DirectDragBegin:
+				OpenTTDPadMoveCursor(point);
+				_left_button_down = true;
+				HandleMouseEvents();
+				break;
+			case ActionType::DirectDragMove:
+				OpenTTDPadMoveCursor(point);
+				break;
+			case ActionType::DirectDragEnd:
+				OpenTTDPadMoveCursor(point);
+				_left_button_down = false;
+				_left_button_clicked = false;
+				HandleMouseEvents();
+				if (_thd.place_mode != HT_NONE) OpenTTDPadHaptic(1);
+				break;
+			case ActionType::DirectDragCancel:
+				_left_button_down = false;
+				_left_button_clicked = false;
+				ResetObjectToPlace();
+				break;
+			case ActionType::ZoomIn:
+			case ActionType::ZoomOut:
+				OpenTTDPadMoveCursor(point);
+				_cursor.wheel += action.type == ActionType::ZoomIn ? -1 : 1;
+				_cursor.wheel_moved = true;
+				break;
+			case ActionType::PrecisionBegin:
+				OpenTTDPadShowPrecisionLoupe(action.position);
+				OpenTTDPadHaptic(0);
+				OpenTTDPadMoveCursor(point);
+				break;
+			case ActionType::PrecisionMove:
+				OpenTTDPadShowPrecisionLoupe(action.position);
+				OpenTTDPadMoveCursor(point);
+				break;
+			case ActionType::PrecisionCommit:
+				OpenTTDPadPrecisionLoupe(false, 0, 0, 0);
+				OpenTTDPadPrimaryClick(point);
+				OpenTTDPadHaptic(1);
+				break;
+			case ActionType::Cancel:
+				OpenTTDPadStopMomentum();
+				OpenTTDPadPrecisionLoupe(false, 0, 0, 0);
+				_left_button_down = false;
+				_right_button_down = false;
+				_left_button_clicked = false;
+				_scrolling_viewport = false;
+				_cursor.fix_at = false;
+				break;
+		}
+	}
+}
+#endif
 #ifdef __EMSCRIPTEN__
 #	include <emscripten.h>
 #	include <emscripten/html5.h>
@@ -138,6 +410,13 @@ bool VideoDriver_SDL_Base::CreateMainWindow(uint w, uint h, uint flags)
 
 	flags |= SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
 
+#ifdef OPENTTDPAD_IOS
+	/* UIKit only hides its status bar for an SDL fullscreen/borderless window.
+	 * Keep OpenTTD's toolbar out of the system gesture regions as well. */
+	flags |= SDL_WINDOW_FULLSCREEN | SDL_WINDOW_BORDERLESS;
+	SDL_SetHint(SDL_HINT_IOS_HIDE_HOME_INDICATOR, "2");
+#endif
+
 	if (_fullscreen) {
 		flags |= SDL_WINDOW_FULLSCREEN;
 	}
@@ -160,6 +439,10 @@ bool VideoDriver_SDL_Base::CreateMainWindow(uint w, uint h, uint flags)
 		Debug(driver, 0, "SDL2: Couldn't allocate a window to draw on: {}", SDL_GetError());
 		return false;
 	}
+
+#ifdef OPENTTDPAD_IOS
+	OpenTTDPadAttachSDLWindowToScene(this->sdl_window);
+#endif
 
 	std::string icon_path = FioFindFullPath(BASESET_DIR, "openttd.32.bmp");
 	if (!icon_path.empty()) {
@@ -380,10 +663,52 @@ bool VideoDriver_SDL_Base::PollEvent()
 {
 	SDL_Event ev;
 
+#ifdef OPENTTDPAD_IOS
+	if (_game_mode == GM_NORMAL) OpenTTDPadMaybeShowTouchHint();
+	OpenTTDPadSetToolOverlay(_thd.place_mode != HT_NONE);
+	auto timed_actions = _openttdpad_gestures.Update(SDL_GetTicks());
+	if (!timed_actions.empty()) {
+		OpenTTDPadApplyTouchActions(timed_actions);
+		return true;
+	}
+	if (OpenTTDPadAdvanceMomentum(SDL_GetTicks())) return true;
+#endif
+
 	if (!SDL_PollEvent(&ev)) return false;
 
 	switch (ev.type) {
+		case SDL_FINGERDOWN:
+		case SDL_FINGERMOTION:
+		case SDL_FINGERUP: {
+#ifdef OPENTTDPAD_IOS
+			Point point = OpenTTDPadTouchPoint(ev.tfinger);
+			std::vector<OpenTTDPad::Touch::Action> actions;
+			if (ev.type == SDL_FINGERDOWN) {
+				OpenTTDPadStopMomentum();
+				OpenTTDPadInputProbe("finger-down", ev.tfinger.touchId, ev.tfinger.x, ev.tfinger.y);
+				if (!OpenTTDPadTouchIsInRejectedEdge(point)) {
+					actions = _openttdpad_gestures.FingerDown(ev.tfinger.fingerId,
+						{static_cast<double>(point.x), static_cast<double>(point.y)}, ev.tfinger.timestamp,
+						OpenTTDPadTouchUsesDirectDrag(point), OpenTTDPadTouchIsOverMap(point));
+				}
+			} else if (ev.type == SDL_FINGERMOTION) {
+				OpenTTDPadInputProbe("finger-move", ev.tfinger.touchId, ev.tfinger.x, ev.tfinger.y);
+				actions = _openttdpad_gestures.FingerMove(ev.tfinger.fingerId,
+					{static_cast<double>(point.x), static_cast<double>(point.y)}, ev.tfinger.timestamp);
+			} else {
+				OpenTTDPadInputProbe("finger-up", ev.tfinger.touchId, ev.tfinger.x, ev.tfinger.y);
+				actions = _openttdpad_gestures.FingerUp(ev.tfinger.fingerId,
+					{static_cast<double>(point.x), static_cast<double>(point.y)}, ev.tfinger.timestamp);
+			}
+			OpenTTDPadApplyTouchActions(actions);
+#endif
+			break;
+		}
+
 		case SDL_MOUSEMOTION: {
+#ifdef OPENTTDPAD_IOS
+			OpenTTDPadInputProbe("mouse-move", ev.motion.which, ev.motion.x, ev.motion.y);
+#endif
 			int32_t x = ev.motion.x;
 			int32_t y = ev.motion.y;
 
@@ -404,6 +729,9 @@ bool VideoDriver_SDL_Base::PollEvent()
 		}
 
 		case SDL_MOUSEWHEEL: {
+#ifdef OPENTTDPAD_IOS
+			OpenTTDPadInputProbe("mouse-wheel", ev.wheel.which, ev.wheel.preciseX, ev.wheel.preciseY);
+#endif
 			if (ev.wheel.y > 0) {
 				_cursor.wheel--;
 			} else if (ev.wheel.y < 0) {
@@ -424,6 +752,9 @@ bool VideoDriver_SDL_Base::PollEvent()
 		}
 
 		case SDL_MOUSEBUTTONDOWN:
+#ifdef OPENTTDPAD_IOS
+			OpenTTDPadInputProbe("mouse-button-down", ev.button.which, ev.button.x, ev.button.y);
+#endif
 			if (_rightclick_emulate && SDL_GetModState() & KMOD_CTRL) {
 				ev.button.button = SDL_BUTTON_RIGHT;
 			}
@@ -444,6 +775,9 @@ bool VideoDriver_SDL_Base::PollEvent()
 			break;
 
 		case SDL_MOUSEBUTTONUP:
+#ifdef OPENTTDPAD_IOS
+			OpenTTDPadInputProbe("mouse-button-up", ev.button.which, ev.button.x, ev.button.y);
+#endif
 			if (_rightclick_emulate) {
 				_right_button_down = false;
 				_left_button_down = false;
@@ -461,7 +795,39 @@ bool VideoDriver_SDL_Base::PollEvent()
 			HandleExitGameRequest();
 			break;
 
+#ifdef OPENTTDPAD_IOS
+		case SDL_APP_WILLENTERBACKGROUND:
+		case SDL_APP_DIDENTERBACKGROUND:
+			if (_openttdpad_is_background) break;
+			_openttdpad_is_background = true;
+			OpenTTDPadApplyTouchActions(_openttdpad_gestures.Cancel());
+			if (!_openttdpad_added_background_pause && _pause_mode.None()) {
+				_pause_mode.Set(PauseMode::Normal);
+				_openttdpad_added_background_pause = true;
+			}
+			SaveToConfig();
+			if (_game_mode == GM_NORMAL && !_networking && !HasModalProgress()) {
+				Debug(sl, 1, "Saving iPad background recovery snapshot");
+				SaveOrLoad("background.sav", SLO_SAVE, DFT_GAME_FILE, AUTOSAVE_DIR, false);
+			}
+			break;
+
+		case SDL_APP_WILLENTERFOREGROUND:
+		case SDL_APP_DIDENTERFOREGROUND:
+			if (!_openttdpad_is_background) break;
+			_openttdpad_is_background = false;
+			if (_openttdpad_added_background_pause) {
+				_pause_mode.Reset(PauseMode::Normal);
+				_openttdpad_added_background_pause = false;
+			}
+			this->MakeDirty(0, 0, _screen.width, _screen.height);
+			break;
+#endif
+
 		case SDL_KEYDOWN: // Toggle full-screen on ALT + ENTER/F
+#ifdef OPENTTDPAD_IOS
+			OpenTTDPadInputProbe("key-down", ev.key.windowID, ev.key.keysym.sym, ev.key.keysym.mod);
+#endif
 			if ((ev.key.keysym.mod & (KMOD_ALT | KMOD_GUI)) &&
 					(ev.key.keysym.sym == SDLK_RETURN || ev.key.keysym.sym == SDLK_f)) {
 				if (ev.key.repeat == 0) ToggleFullScreen(!_fullscreen);
@@ -491,6 +857,9 @@ bool VideoDriver_SDL_Base::PollEvent()
 			break;
 
 		case SDL_TEXTINPUT: {
+#ifdef OPENTTDPAD_IOS
+			OpenTTDPadInputProbe("text-input", 0, 0, 0);
+#endif
 			if (!this->edit_box_focused) break;
 			SDL_Keycode kc = SDL_GetKeyFromName(ev.text.text);
 			uint keycode = ConvertSdlKeycodeIntoMy(kc);
@@ -520,6 +889,10 @@ bool VideoDriver_SDL_Base::PollEvent()
 				/* mouse left the window, undraw cursor */
 				UndrawMouseCursor();
 				_cursor.in_window = false;
+			} else if (ev.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+#ifdef OPENTTDPAD_IOS
+				OpenTTDPadApplyTouchActions(_openttdpad_gestures.Cancel());
+#endif
 			}
 			break;
 		}
@@ -535,6 +908,14 @@ static std::optional<std::string_view> InitializeSDL()
 
 #ifdef SDL_HINT_APP_NAME
 	SDL_SetHint(SDL_HINT_APP_NAME, "OpenTTD");
+#endif
+
+#ifdef OPENTTDPAD_IOS
+	/* Direct touch is routed by GestureState. Genuine indirect pointer events
+	 * remain on SDL's upstream mouse path, with no duplicate synthesis. */
+	SDL_SetHint(SDL_HINT_AUDIO_CATEGORY, "ambient");
+	SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+	SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
 #endif
 
 	if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) return SDL_GetError();

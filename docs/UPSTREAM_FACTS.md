@@ -18,6 +18,11 @@ changes, update this file before changing architecture or build inputs.
 | UIKit scene lifecycle | Apps built with the iOS/iPadOS 27 SDK must adopt scenes or fail to launch | [Apple migration guidance](https://developer.apple.com/documentation/uikit/transitioning-to-the-uikit-scene-based-life-cycle) | Matches PRD; implement from first frame |
 | Local/current Apple toolchain | Xcode 26.6 build 17F113; iPhoneOS and Simulator SDK 26.5; iOS 18.5 and 26.5 Simulator runtimes installed. Xcode 27 beta 3 is newer but not the stable build base. | `xcodebuild -version`, `xcrun --sdk ... --show-sdk-version`, `simctl list`; [Apple Xcode support](https://developer.apple.com/support/xcode/) | Stable installed toolchain is sufficient |
 | Minimum iPadOS | 17.0 | Project decision from PRD proposal; supported by current Xcode/SDK and leaves broad arm64 coverage | Accepted for initial target |
+| xz/liblzma pin | 5.8.3, commit `4b73f2ec19a99ef465282fbce633e8deb33691b3` | [official xz repository](https://github.com/tukaani-project/xz/releases/tag/v5.8.3); `ref/xz` | Required static save codec; only liblzma is built |
+| libpng pin | 1.6.58, commit `3061454d980de7d53608f594194cfac722721d2a` | [official libpng repository](https://github.com/pnggroup/libpng/releases/tag/v1.6.58); `ref/libpng` | Required static screenshot/heightmap codec |
+| curl pin | 8.21.0, commit `68720b4837284335b2d63cb358f8f6ce65f5bc55` | [official curl release table](https://curl.se/docs/releases.html); `ref/curl` | Static HTTP/HTTPS, IPFS/IPNS, and WebSocket client; unused protocols disabled |
+| Mbed TLS pin | 3.6.6 LTS, archive SHA-256 `8fb65fae8dcae5840f793c0a334860a411f884cc537ea290ce1c52bb64ca007a` | [official security release](https://github.com/Mbed-TLS/mbedtls/releases/tag/mbedtls-3.6.6); verified archive under `ref/` | Static TLS backend for curl |
+| HTTPS trust roots | Mozilla CA extract dated 2026-07-16, 119 certificates, SHA-256 `3ff344e30b9b1ed2971044eabb438a08f2e2245ddb5f8ab1a3ad8b63ab4eaf91` | [curl CA extract service](https://curl.se/docs/caextract.html); bundled `cacert.pem` | MPL 2.0 bundle with peer verification retained |
 
 ## Free base-content audit
 
@@ -40,6 +45,10 @@ on-demand download; any such choice must be recorded before P1.5 closes.
 |---|---|
 | `ref/OpenTTD` | `14ec60f248547d4d062a1160f0fc26d742319888` (tag 15.3) |
 | `ref/SDL2` | `5d249570393f7a37e037abf22cd6012a4cc56a71` (tag release-2.32.10) |
+| `ref/xz` | `4b73f2ec19a99ef465282fbce633e8deb33691b3` (tag v5.8.3) |
+| `ref/libpng` | `3061454d980de7d53608f594194cfac722721d2a` (tag v1.6.58) |
+| `ref/curl` | `68720b4837284335b2d63cb358f8f6ce65f5bc55` (tag curl-8_21_0) |
+| `ref/mbedtls` | 3.6.6 release archive, SHA-256 recorded above |
 | `ref/OpenGFX` | `c51c904f4f6e7466ee73f907520ef7ea9a53bcbb` |
 | `ref/OpenSFX` | `d0bf8d4deda22d5a7f8d01953433cb2644663e9f` |
 | `ref/OpenMSX` | `312ca0ae46a271fb65ba49674b5e935ca0f41036` |

@@ -26,6 +26,7 @@ add_subdirectory(spriteloader)
 add_subdirectory(table)
 add_subdirectory(tests)
 add_subdirectory(timer)
+add_subdirectory(touch)
 add_subdirectory(video)
 add_subdirectory(widgets)
 

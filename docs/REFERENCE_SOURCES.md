@@ -11,10 +11,14 @@ eventual tracked `engine/` subtree.
 |---|---|
 | `ref/OpenTTD/` | clean official 15.3 source and macOS baseline build |
 | `ref/SDL2/` | pinned official SDL 2.32.10 source for iOS |
+| `ref/xz/` | pinned official xz/liblzma 5.8.3 source for save compatibility |
+| `ref/libpng/` | pinned official libpng 1.6.58 source for screenshots/heightmaps |
+| `ref/curl/` | pinned official curl 8.21.0 source for HTTP/HTTPS content access |
+| `ref/mbedtls/` | pinned official Mbed TLS 3.6.6 source used by static curl |
 | `ref/OpenGFX/` | current official graphics source/credits reference |
 | `ref/OpenSFX/` | current official sound source/license inventory reference |
 | `ref/OpenMSX/` | current official music source/credits reference |
-| `ref/game-files/` | checksummed official release archives, extracted free game data, local configs, and saves |
+| `ref/game-files/` | checksummed official release archives, Mozilla CA bundle and license, extracted free game data, local configs, and saves |
 
 ## Rules
 

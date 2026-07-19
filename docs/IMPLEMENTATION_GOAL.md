@@ -25,7 +25,9 @@ source, and auditable third-party notices.
   obsolete iOS/Android fork code.
 - Prefer new isolated platform/touch files. Log every edit to a pre-existing
   upstream file in `docs/PATCHES.md`.
-- Do not begin Phase 2 touch-product work until Gate G0 has passed.
+- Do not represent Phase 2 as accepted until Gate G0 has passed. The maintainer
+  has explicitly authorized Simulator-only implementation to continue while
+  unavailable physical-device experiments remain open; see `DEVIATIONS.md`.
 - Never claim Simulator automation proves physical multitouch, Pencil, pointer
   feel, thermal behavior, or physical-device lifecycle reliability.
 
@@ -84,8 +86,18 @@ latency, thermal, audio-route, and device backgrounding remain hardware gates.
 
 ## Current checkpoint
 
-- P0.0 fact re-verification: complete on 2026-07-18.
-- P0.1 macOS baseline: complete; Release build and 96/96 tests passed, free
-  assets loaded, deterministic game saved and visibly reopened.
-- P0.2 iOS toolchain: next. Vendor the pinned engine subtree, build native host
-  tools, pin SDL 2.32.10, and establish arm64 Simulator/device dependency builds.
+- P0.0 and P0.1 complete: facts, Release baseline, 96/96 upstream tests, free
+  assets, and deterministic macOS save/reload.
+- Arm64 Simulator and unsigned device bundles statically link SDL, liblzma,
+  libpng, curl, and Mbed TLS; audited free content and the Mozilla CA bundle are
+  packaged reproducibly.
+- Scene startup, fullscreen landscape, gameplay, sandbox save/reload, emergency
+  background save, software keyboard, and the live HTTPS content catalog work.
+- Touch is source-tagged with SDL synthesis disabled. Fifteen deterministic
+  host scenarios cover tap, drag, pan, momentum, pinch, secondary click,
+  precision, abort, cancel, and 44 pt hit expansion. Three XCTest scenarios
+  cover continuous drag/precision, first-run coaching, and lifecycle.
+- Physical pointer/Pencil/keyboard, sustained multitouch, audio routes,
+  performance, and lifecycle gates remain open. Productization (Files,
+  settings, international text, music) and complete touch-only routes are the
+  active workstreams.

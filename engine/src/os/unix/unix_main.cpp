@@ -16,6 +16,10 @@
 #include <time.h>
 #include <signal.h>
 
+#ifdef OPENTTDPAD_IOS
+#include <SDL_main.h>
+#endif
+
 #include "../../safeguards.h"
 
 int CDECL main(int argc, char *argv[])

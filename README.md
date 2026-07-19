@@ -2,10 +2,11 @@
 
 A native, touch-first iPadOS adaptation of the current upstream [OpenTTD](https://www.openttd.org) engine: touch-first controls, desktop-quality pointer and keyboard input, desktop-compatible saves, online content, and a reproducible open-source build.
 
-> **Status: Phase 0 feasibility.** P0.0 fact verification and the P0.1 macOS
-> baseline are complete: OpenTTD 15.3 builds in Release, all 96 upstream tests
-> pass, audited free base sets load, and a deterministic save has been visibly
-> reopened. P0.2 iOS cross-compilation is in progress. See
+> **Status: native iPad Simulator build running.** The arm64 scene-based app
+> reaches a playable landscape game with audited free assets; save/relaunch/load,
+> HTTPS Online Content, software keyboard, continuous-drag automation, and the
+> precision loupe have been exercised. Explicit source-separated touch routing
+> is under test. Physical-device gates remain open. See
 > [docs/STATUS.md](docs/STATUS.md).
 
 ## What this project is
@@ -33,6 +34,21 @@ Active implementation records:
 - [Local reference-source policy](docs/REFERENCE_SOURCES.md)
 - [Downstream engine patch log](docs/PATCHES.md)
 - [Requirement deviations](docs/DEVIATIONS.md)
+
+## Build the iPad Simulator app
+
+```sh
+./scripts/bootstrap-reference.sh
+./scripts/build-simulator.sh
+./scripts/run-simulator.sh
+```
+
+The bootstrap keeps all downloaded sources and game archives under the
+gitignored `ref/` tree. The build uses native host generators, then produces
+arm64 Simulator libraries and the signed local `.app` under `build/`.
+
+For an unsigned arm64 physical-device bundle (installation still requires your
+own signing identity), run `./scripts/build-device.sh`.
 
 ## Licensing
 

@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.17)
 
+# OpenTTD upstream currently treats every Apple target as macOS. Keep the
+# distinction explicit so iOS can use SDL/UIKit without disturbing macOS.
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    set(OPENTTDPAD_IOS ON)
+endif()
+
 if(NOT BINARY_NAME)
     set(BINARY_NAME openttd)
 endif()
@@ -23,7 +29,9 @@ if (EMSCRIPTEN)
 endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
+if(NOT OPENTTDPAD_IOS)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15)
+endif()
 
 # Use GNUInstallDirs to allow customisation
 # but set our own default data and bin dir
@@ -53,6 +61,10 @@ add_custom_target(tools)
 
 include(CompileFlags)
 compile_flags()
+
+if(OPENTTDPAD_IOS)
+    add_definitions(-DOPENTTDPAD_IOS)
+endif()
 
 if(APPLE OR UNIX)
     add_definitions(-DUNIX)
@@ -140,7 +152,7 @@ if(NOT OPTION_DEDICATED)
         find_package(Xaudio2)
     else()
         find_package(Allegro)
-        if(NOT APPLE)
+        if(NOT APPLE OR OPENTTDPAD_IOS)
             find_package(Freetype)
             find_package(SDL2)
             find_package(Fluidsynth)
@@ -155,6 +167,10 @@ if(NOT OPTION_DEDICATED)
 endif()
 if(APPLE)
     enable_language(OBJCXX)
+
+endif()
+
+if(APPLE AND NOT OPENTTDPAD_IOS)
 
     find_package(Iconv)
 
@@ -181,7 +197,7 @@ check_ipo_supported(RESULT IPO_FOUND)
 
 show_options()
 
-if(UNIX AND NOT APPLE AND NOT OPTION_DEDICATED)
+if((UNIX AND NOT APPLE OR OPENTTDPAD_IOS) AND NOT OPTION_DEDICATED)
     if(NOT SDL2_FOUND AND NOT ALLEGRO_FOUND)
         message(FATAL_ERROR "SDL2 or Allegro is required for this platform")
     endif()
@@ -192,7 +208,7 @@ if(UNIX AND NOT APPLE AND NOT OPTION_DEDICATED)
         message(WARNING "Without HarfBuzz and ICU i18n the game will not be able to render right-to-left languages correctly")
     endif()
 endif()
-if(APPLE)
+if(APPLE AND NOT OPENTTDPAD_IOS)
     if(NOT AUDIOTOOLBOX_LIBRARY)
         message(FATAL_ERROR "AudioToolbox is required for this platform")
     endif()
@@ -242,6 +258,17 @@ add_executable(openttd_test)
 set_target_properties(openttd PROPERTIES OUTPUT_NAME "${BINARY_NAME}")
 # All other files are added via target_sources()
 
+if(OPENTTDPAD_IOS)
+    set_target_properties(openttd PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/../os/ios/Info.plist.in"
+        MACOSX_BUNDLE_BUNDLE_NAME "OpenTTDPad"
+        MACOSX_BUNDLE_BUNDLE_VERSION "1"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "org.openttd.OpenTTDPad"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1.0"
+    )
+endif()
+
 if(MSVC)
     # Add DPI manifest to project; other WIN32 targets get this via ottdres.rc
     target_sources(openttd PRIVATE "${CMAKE_SOURCE_DIR}/os/windows/openttd.manifest")
@@ -282,6 +309,13 @@ target_link_libraries(openttd
     openttd::basesets
 )
 
+if(OPENTTDPAD_IOS)
+    target_link_libraries(openttd SDL2::SDL2main)
+    target_link_options(openttd PRIVATE
+        "LINKER:-force_load,$<TARGET_FILE:SDL2::SDL2main>"
+    )
+endif()
+
 target_link_libraries(openttd_test PRIVATE openttd_lib)
 if(ANDROID)
     target_link_libraries(openttd_test PRIVATE log)
@@ -309,6 +343,9 @@ link_package(LZO)
 
 if(NOT WIN32 AND NOT EMSCRIPTEN)
     link_package(CURL ENCOURAGED)
+    if(OPENTTDPAD_IOS AND OPENTTDPAD_MBEDTLS_LIBRARIES)
+        target_link_libraries(openttd_lib ${OPENTTDPAD_MBEDTLS_LIBRARIES})
+    endif()
     target_link_libraries(openttd_lib ${CMAKE_DL_LIBS})
 endif()
 
@@ -340,7 +377,7 @@ endif()
 
 include(3rdparty/llvm/CheckAtomic)
 
-if(APPLE)
+if(APPLE AND NOT OPENTTDPAD_IOS)
     link_package(Iconv TARGET Iconv::Iconv)
 
     target_link_libraries(openttd_lib
@@ -460,8 +497,10 @@ enable_testing()
 
 add_subdirectory(regression)
 
-if(APPLE OR WIN32)
+if((APPLE AND NOT OPENTTDPAD_IOS) OR WIN32)
     find_package(Pandoc)
 endif()
 
-include(InstallAndPackage)
+if(NOT OPENTTDPAD_IOS)
+    include(InstallAndPackage)
+endif()

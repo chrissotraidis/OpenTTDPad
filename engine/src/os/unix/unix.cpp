@@ -51,7 +51,7 @@
 #include <sys/sysctl.h>
 #endif
 
-#if defined(__APPLE__)
+#if defined(__APPLE__) && !defined(OPENTTDPAD_IOS)
 #	include "../macosx/macos.h"
 #endif
 
@@ -189,7 +189,7 @@ void ShowInfoI(std::string_view str)
 	fmt::print(stderr, "{}\n", str);
 }
 
-#if !defined(__APPLE__)
+#if !defined(__APPLE__) || defined(OPENTTDPAD_IOS)
 void ShowOSErrorBox(std::string_view buf, bool)
 {
 	/* All unix systems, except OSX. Only use escape codes on a TTY. */
@@ -226,7 +226,7 @@ void OSOpenBrowser(const std::string &url)
 	/* Implementation in pre.js */
 	EM_ASM({ if (window["openttd_open_url"]) window.openttd_open_url($0, $1) }, url.data(), url.size());
 }
-#elif !defined( __APPLE__)
+#elif !defined(__APPLE__)
 void OSOpenBrowser(const std::string &url)
 {
 	pid_t child_pid = fork();
@@ -247,7 +247,7 @@ void SetCurrentThreadName([[maybe_unused]] const std::string &thread_name)
 #if defined(__GLIBC__)
 	pthread_setname_np(pthread_self(), thread_name.c_str());
 #endif /* defined(__GLIBC__) */
-#if defined(__APPLE__)
+#if defined(__APPLE__) && !defined(OPENTTDPAD_IOS)
 	MacOSSetThreadName(thread_name);
 #endif /* defined(__APPLE__) */
 }

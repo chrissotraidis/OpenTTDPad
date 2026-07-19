@@ -27,6 +27,10 @@
 
 #include "../../safeguards.h"
 
+#if defined(OPENTTDPAD_IOS)
+extern "C" const char *OpenTTDPadCACertificatePath();
+#endif
+
 #if defined(UNIX)
 /** List of certificate bundles, depending on OS. Taken from: https://go.dev/src/crypto/x509/root_linux.go. */
 static constexpr std::initializer_list<std::string_view> _certificate_files = {
@@ -252,6 +256,12 @@ void NetworkHTTPInitialize()
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 
 #if defined(UNIX)
+	#if defined(OPENTTDPAD_IOS)
+	if (const char *bundle_ca = OpenTTDPadCACertificatePath(); bundle_ca != nullptr) {
+		_http_ca_file = bundle_ca;
+	}
+	#endif
+
 	/* Depending on the Linux distro, certificates can either be in
 	 * a bundle or a folder, in a wide range of different locations.
 	 * Try to find what location is used by this OS. */

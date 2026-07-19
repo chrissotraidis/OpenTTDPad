@@ -210,6 +210,24 @@ TEST_CASE("OpenTTDPad cancellation releases any active gesture")
 	CHECK(idle.Cancel().empty());
 }
 
+TEST_CASE("OpenTTDPad touch settings only change between gestures")
+{
+	GestureState gestures;
+	Settings responsive;
+	responsive.drag_activate = 6.0;
+	CHECK(gestures.SetSettings(responsive));
+	CHECK(gestures.GetSettings().drag_activate == 6.0);
+
+	gestures.FingerDown(1, {100, 100}, 0, false);
+	Settings relaxed;
+	relaxed.drag_activate = 14.0;
+	CHECK_FALSE(gestures.SetSettings(relaxed));
+	CHECK(gestures.GetSettings().drag_activate == 6.0);
+	gestures.Cancel();
+	CHECK(gestures.SetSettings(relaxed));
+	CHECK(gestures.GetSettings().drag_activate == 14.0);
+}
+
 TEST_CASE("OpenTTDPad expands small touch targets and preserves visual bounds")
 {
 	const std::vector<HitTarget> targets = {

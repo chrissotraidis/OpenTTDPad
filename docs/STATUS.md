@@ -8,8 +8,8 @@ Updated: **2026-07-19**
 - macOS: 26.5.2 (25F84)
 - Xcode: 26.6 (17F113)
 - iPhoneOS / Simulator SDK: 26.5 / 26.5
-- Active Simulator: iPad Pro 13-inch (M5), iOS 26.5,
-  `68016FEA-1887-4E05-A7F4-B26EC8572B8A`
+- Simulator matrix: iPad Pro 13-inch (M5), iPad (A16), and iPad mini (A17 Pro),
+  all on iOS 26.5
 - Apple Clang: 21.0.0; CMake: 4.4.0; Ninja: 1.13.2
 - Physical iPad: not connected. Hardware-only acceptance remains open and is
   never represented as a Simulator pass.
@@ -20,9 +20,9 @@ Updated: **2026-07-19**
 - [x] P0.1 — untouched macOS baseline — OpenTTD 15.3 Release, 96/96 tests,
   free content, deterministic save/reload
 - [x] P0.2 build slices — host tools plus SDL 2.32.10, xz/liblzma 5.8.3,
-  libpng 1.6.58, curl 8.21.0, Mbed TLS 3.6.6, SDK zlib, and OpenTTD link as
-  arm64 Mach-O for Simulator; the unsigned arm64 device bundle is built by the
-  same pinned dependency pipeline
+  libpng 1.6.58, curl 8.21.0, Mbed TLS 3.6.6, FreeType 2.14.3, HarfBuzz
+  14.2.0, ICU 78.1 headers/SDK library, SDK zlib, and OpenTTD link as arm64
+  Mach-O for Simulator; the unsigned arm64 device bundle uses the same pins
 - [x] P0.3 Simulator slice — scene-based native shell, landscape/fullscreen,
   free offline content, first playable game, manual save, force-terminate,
   relaunch, and load
@@ -32,9 +32,17 @@ Updated: **2026-07-19**
 - [ ] Gate G0 — **not passed** until physical EXP-2/6/8 evidence exists
 - [~] Phase 2 Simulator engineering — deliberately proceeding under the
   recorded execution-order deviation; this does not waive G0 or release gates
-- [~] Phase 3 Simulator engineering — first-run touch coaching, online content
-  over verified HTTPS, and bundled notices are working; Files import/export,
-  settings UI, international text dependencies, and music playback remain
+- [x] Phase 3 Simulator engineering — first-run touch coaching, Files
+  import/export, persistent touch settings, bundled notices, verified HTTPS
+  content, complex international text, and native General MIDI playback work
+  in the packaged app
+- [x] Release engineering — clean-clone bootstrap, Simulator and unsigned
+  device builds, checksummed unsigned IPA, source-release packager, dependency
+  inventory, forbidden-asset scan, and six GitHub Actions workflows are tracked
+
+The workflow YAML and scripts pass local syntax/hygiene validation. The GitHub
+jobs themselves remain unexecuted until this branch is pushed; local build and
+Simulator evidence, not an unrun CI declaration, is the proof recorded here.
 
 ## Native build and packaging proof
 
@@ -53,10 +61,27 @@ vtool -show-build build/ios-sim/openttd.app/openttd
 ```
 
 The app bundle contains generated OpenTTD data/languages/scripts, GPL source
-notice, OpenGFX 8.0, OpenSFX 1.0.3, OpenMSX 0.4.2, and complete dependency
-notices. HTTPS uses static curl/Mbed TLS plus the dated Mozilla CA extract in
-`cacert.pem`; the live Online Content catalog populated in Simulator. The
-Simulator bundle is ad-hoc signed. No commercial TTD files are present.
+notice, OpenGFX 8.0, OpenSFX 1.0.3, OpenMSX 0.4.2, TimGM6mb 1.3, and complete
+dependency notices. HTTPS uses static curl/Mbed TLS plus the dated Mozilla CA
+extract in `cacert.pem`; the live Online Content catalog populated in
+Simulator. FreeType 2.14.3 and HarfBuzz 14.2.0 are static; pinned ICU 78.1
+headers pair with the SDK `libicucore`, and CoreText supplies system fallback
+fonts. The Simulator bundle is ad-hoc signed. The device executable is arm64,
+targets iOS 17.0, links only Apple system dylibs/frameworks, and packages as an
+unsigned IPA. Both bundles contain a compiled native asset catalog and iPad app
+icon derived from tracked upstream GPLv2 artwork. No commercial TTD files are
+present.
+
+Final unsigned IPA:
+
+```text
+build/artifacts/OpenTTDPad-unsigned.ipa
+SHA-256 874bd44587024a7c8e9826c98ea21449e8b9ab794602270c18d80f5d96f58b63
+```
+
+Two consecutive packaging runs produced that same checksum. The IPA packager
+normalizes payload timestamps and strips ZIP metadata so the unsigned artifact
+is reproducible from an unchanged device app.
 
 ## Simulator shell and persistence evidence
 
@@ -84,6 +109,7 @@ Evidence:
 - [scene-based landscape frame](evidence/p0-ios-scene-landscape.png)
 - [save restored after process relaunch](evidence/p0-ios-reloaded-save.png)
 - [HTTPS Online Content catalog](evidence/p3-ios-online-content.png)
+- [Arabic right-to-left UI rendered with system fallback](evidence/p3-ios-arabic-rtl.png)
 
 The initial dependency spike omitted liblzma and could not reopen an LZMA save.
 That failure was captured in the Simulator console and corrected by adding
@@ -121,16 +147,39 @@ Host verification:
 
 ```text
 ctest --test-dir build/macos-touch -R OpenTTDPad --output-on-failure
-100% tests passed, 15/15
+100% tests passed, 16/16
+
+ctest --test-dir build/macos-touch --output-on-failure
+100% tests passed, 112/112
 
 ./scripts/test-simulator-ui.sh
-3 XCTest UI scenarios: continuous drag + precision press; first-run coach;
-background/foreground round-trip
+7 XCTest UI scenarios: continuous map drag + precision press; touch-only Rail
+and Road palettes, construction selection, continuous construction drags, and
+cancellation; first-run coach; background/foreground round-trip; native touch
+settings and licenses; ZIP save export/share sheet
 ```
 
+All seven scenarios passed on every tested size class (**21/21 invocations**):
+
+| Simulator | Result bundle |
+|---|---|
+| iPad Pro 13-inch (M5) | `build/xcode-derived-data-pro-seven-final/Logs/Test/Test-OpenTTDPadUITests-2026.07.19_05-46-05--0500.xcresult` |
+| iPad mini (A17 Pro) | `build/xcode-derived-data-mini-seven/Logs/Test/Test-OpenTTDPadUITests-2026.07.19_05-24-44--0500.xcresult` |
+| iPad (A16) | `build/xcode-derived-data-base-final-seven/Logs/Test/Test-OpenTTDPadUITests-2026.07.19_05-21-11--0500.xcresult` |
+
+The final icon-complete base-iPad launch log contains none of the earlier
+missing-launch-screen, missing-asset-catalog, or unbalanced-appearance warnings.
+
 XCTest's coordinate API supplies a true continuous drag in Simulator, while
-the platform-neutral event-stream suite owns gesture boundary semantics.
-Physical multitouch, Pencil, and real pointer feel remain hardware gates.
+the platform-neutral event-stream suite owns gesture boundary semantics. The
+construction scenario also caught a real integration defect: global bezel
+edge rejection made safe-area-adjacent toolbar widgets untappable. Rejection is
+now limited to viewport gestures, and the test asserts that a finger opens the
+exact Rail palette before operating Autorail. Expanding the same proof to Road
+caught a second size-class defect: the wide Pro toolbar and its one-row Road
+menu need different normalized targets than compact iPads. The suite now
+asserts the exact transport palette on every size before construction. Physical
+multitouch, Pencil, and real pointer feel remain hardware gates.
 
 ## Experiment ledger
 
@@ -144,8 +193,8 @@ Physical multitouch, Pencil, and real pointer feel remain hardware gates.
 | EXP-6 physical pointer | Open | genuine mouse/trackpad hardware required |
 | EXP-7 touch separation | Simulator pass | raw finger-only probe after both SDL synthesis hints disabled |
 | EXP-8 software keyboard | Partial | save-name field shown and typed in Simulator; device/hardware keyboard remains |
-| EXP-9 lifecycle loop | Open | physical iPad required |
-| EXP-10 touch construction | In progress | host recognizer and continuous-drag XCTest pass; full touch-only route and five-person trial remain |
+| EXP-9 lifecycle loop | Partial | one background/foreground recovery cycle passes on all three Simulators; ten-cycle physical run remains |
+| EXP-10 touch construction | Simulator integration pass; usability gate open | finger-only Rail and Road palettes → direct tools → continuous placement drags → native Cancel pass across three size classes; full T-GAME route and five-person first-use trial remain |
 
 ## P0.1 baseline proof
 
@@ -163,7 +212,8 @@ The isolated build found OpenGFX 8.0, OpenSFX 1.0.3, and OpenMSX 0.4.2. See
 
 ## Current next proof
 
-Complete native Files import/export, settings, music, and international-text
-support; then exercise the full touch-only road/rail/vehicle/orders route and
-lifecycle matrix across three Simulator device classes. Physical-only gates
-stay open until real hardware is connected.
+Exercise the complete touch-only road/rail/vehicle/orders T-GAME route with
+first-time users, then run physical-device pointer/Pencil/multitouch, audio
+route, performance/thermal, ten-cycle lifecycle, and desktop save round-trip
+gates when an iPad is connected. Simulator-verifiable implementation and
+automation are complete; hardware-only gates stay explicitly open.

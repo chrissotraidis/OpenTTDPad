@@ -89,15 +89,23 @@ latency, thermal, audio-route, and device backgrounding remain hardware gates.
 - P0.0 and P0.1 complete: facts, Release baseline, 96/96 upstream tests, free
   assets, and deterministic macOS save/reload.
 - Arm64 Simulator and unsigned device bundles statically link SDL, liblzma,
-  libpng, curl, and Mbed TLS; audited free content and the Mozilla CA bundle are
-  packaged reproducibly.
+  libpng, curl, Mbed TLS, FreeType, and HarfBuzz; audited free content, native
+  TimGM6mb MIDI playback, ICU/CoreText international text, and the Mozilla CA
+  bundle are packaged reproducibly.
 - Scene startup, fullscreen landscape, gameplay, sandbox save/reload, emergency
-  background save, software keyboard, and the live HTTPS content catalog work.
-- Touch is source-tagged with SDL synthesis disabled. Fifteen deterministic
-  host scenarios cover tap, drag, pan, momentum, pinch, secondary click,
-  precision, abort, cancel, and 44 pt hit expansion. Three XCTest scenarios
-  cover continuous drag/precision, first-run coaching, and lifecycle.
+  background save, software keyboard, Files import/export, touch settings,
+  notices, and the live HTTPS content catalog work.
+- Touch is source-tagged with SDL synthesis disabled. Sixteen deterministic
+  touch scenarios and the complete 112-test host suite pass. Seven native
+  XCTest scenarios cover map drag/precision, exact Rail and Road palettes →
+  direct construction drags → cancellation, first-run coaching, lifecycle,
+  settings, notices, and ZIP save export.
+- Clean-clone bootstrap, both iOS targets, an unsigned checksummed IPA,
+  corresponding-source/patch packaging, release hygiene, and CI workflows are
+  tracked. The pinned SDL UIKit compatibility patch is reproducible.
+- The complete seven-scenario native suite passes on Pro, base, and mini iPad
+  Simulators (21/21), and the full host suite passes 112/112.
 - Physical pointer/Pencil/keyboard, sustained multitouch, audio routes,
-  performance, and lifecycle gates remain open. Productization (Files,
-  settings, international text, music) and complete touch-only routes are the
-  active workstreams.
+  performance, ten-cycle lifecycle, desktop round-trip, the complete T-GAME
+  touch route, and first-user usability gates remain open because they require
+  hardware or human participants. They are not represented as Simulator passes.

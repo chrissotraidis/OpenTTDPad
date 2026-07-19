@@ -12,6 +12,8 @@
     <string>${MACOSX_BUNDLE_GUI_IDENTIFIER}</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
     <key>CFBundleName</key>
     <string>${MACOSX_BUNDLE_BUNDLE_NAME}</string>
     <key>CFBundlePackageType</key>
@@ -51,6 +53,45 @@
     <false/>
     <key>LSSupportsOpeningDocumentsInPlace</key>
     <true/>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>OpenTTD Save or Scenario</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>org.openttd.save</string>
+                <string>org.openttd.scenario</string>
+            </array>
+        </dict>
+    </array>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeConformsTo</key>
+            <array><string>public.data</string></array>
+            <key>UTTypeDescription</key>
+            <string>OpenTTD Save</string>
+            <key>UTTypeIdentifier</key>
+            <string>org.openttd.save</string>
+            <key>UTTypeTagSpecification</key>
+            <dict><key>public.filename-extension</key><array><string>sav</string></array></dict>
+        </dict>
+        <dict>
+            <key>UTTypeConformsTo</key>
+            <array><string>public.data</string></array>
+            <key>UTTypeDescription</key>
+            <string>OpenTTD Scenario</string>
+            <key>UTTypeIdentifier</key>
+            <string>org.openttd.scenario</string>
+            <key>UTTypeTagSpecification</key>
+            <dict><key>public.filename-extension</key><array><string>scn</string></array></dict>
+        </dict>
+    </array>
     <key>UISupportedInterfaceOrientations~ipad</key>
     <array>
         <string>UIInterfaceOrientationLandscapeLeft</string>

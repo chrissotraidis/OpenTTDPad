@@ -6,9 +6,11 @@ purpose and normal review.
 
 | Upstream file | Reason | Status | Upstream issue/PR |
 |---|---|---|---|
-| `engine/CMakeLists.txt` | Detect iOS, omit Cocoa packaging/frameworks, enable Objective-C++, build an app bundle, link SDL2main and curl's static Mbed TLS chain | downstream | not filed |
+| `engine/CMakeLists.txt` | Detect iOS, omit Cocoa packaging/frameworks, enable Objective-C++, build an app bundle, link SDL2main, curl/Mbed TLS, CoreText, and the SDK ICU ABI | downstream | not filed |
+| `engine/cmake/FindICU.cmake` | Pair pinned ICU 78.1 headers with the unversioned Apple SDK `libicucore` ABI during iOS cross-compilation | downstream | not filed |
 | `engine/src/CMakeLists.txt` | Include the isolated touch module | downstream | not filed |
-| `engine/src/music/CMakeLists.txt` | Exclude macOS-only Cocoa MIDI on iOS | downstream | not filed |
+| `engine/src/fontcache/freetypefontcache.cpp` | Ask the iOS CoreText bridge for a language-capable fallback font when a glyph is missing | downstream | not filed |
+| `engine/src/music/CMakeLists.txt` | Exclude macOS-only Cocoa MIDI and register the native iOS Audio Unit MIDI driver | downstream | not filed |
 | `engine/src/sound/CMakeLists.txt` | Exclude macOS-only Cocoa audio on iOS | downstream | not filed |
 | `engine/src/os/CMakeLists.txt` | Include the iOS platform directory | downstream | not filed |
 | `engine/src/os/macosx/CMakeLists.txt` | Prevent macOS platform sources from entering iOS | downstream | not filed |
@@ -24,9 +26,23 @@ purpose and normal review.
 
 New downstream source surfaces:
 
-- `engine/src/os/ios/` — scene/orientation, lifecycle, haptics, loupe, and minimal native overlay services.
+- `engine/src/os/ios/` — scene/orientation, lifecycle, haptics, loupe, Files import/export, persistent touch settings, notices, and CoreText fallback services.
+- `engine/src/music/ios_m.*` — native Audio Unit graph and bundled TimGM6mb MIDI playback.
 - `engine/src/touch/` — platform-neutral touch thresholds, recognizer, and expanded-hit resolver.
 - `engine/src/tests/gesture_state.cpp` — deterministic synthetic input streams.
+- `os/ios/AppIconContents.json` and `BrandTintContents.json` — the generated
+  asset catalog reuses the tracked GPLv2 upstream 1024 px artwork for the
+  native iPad icon and adds one named tint; no duplicate binary artwork is
+  added.
+
+Pinned dependency patch:
+
+- `patches/sdl2-uikit-root-controller.patch` — SDL 2.32.10 still clears and
+  reassigns the same UIKit root view controller for an iOS 7 workaround. On the
+  scene-based iPadOS 17 target this produces unbalanced appearance transitions.
+  The patch keeps the existing controller and attaches its replacement SDL view
+  directly; native presentation and finger routing are covered by XCTest.
+  Bootstrap applies it idempotently and both iOS dependency builds consume it.
 
 Prime directive check: no abandoned iOS fork code was copied. The platform
 bridge and gesture state machine are original downstream implementations over

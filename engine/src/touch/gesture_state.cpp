@@ -24,6 +24,13 @@ GestureState::GestureState(Settings settings) : settings(settings)
 {
 }
 
+bool GestureState::SetSettings(Settings settings)
+{
+	if (this->state != State::Idle) return false;
+	this->settings = settings;
+	return true;
+}
+
 size_t GestureState::FingerCount() const
 {
 	return std::count_if(this->fingers.begin(), this->fingers.end(), [](const Finger &finger) { return finger.active; });

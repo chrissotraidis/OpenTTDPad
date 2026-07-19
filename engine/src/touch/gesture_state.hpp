@@ -75,6 +75,7 @@ public:
 
 	State GetState() const { return this->state; }
 	const Settings &GetSettings() const { return this->settings; }
+	bool SetSettings(Settings settings);
 	size_t FingerCount() const;
 
 private:

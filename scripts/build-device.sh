@@ -7,6 +7,8 @@ device_prefix="$repo_root/build/deps/prefix-device"
 sdl_build="$repo_root/build/deps/sdl2-device"
 xz_build="$repo_root/build/deps/xz-device"
 png_build="$repo_root/build/deps/libpng-device"
+freetype_build="$repo_root/build/deps/freetype-device"
+harfbuzz_build="$repo_root/build/deps/harfbuzz-device"
 curl_build="$repo_root/build/deps/curl-device"
 mbedtls_build="$repo_root/build/deps/mbedtls-device"
 device_build="$repo_root/build/ios-device"
@@ -38,6 +40,27 @@ cmake -S "$repo_root/ref/libpng" -B "$png_build" -G Ninja \
     -DPNG_SHARED=OFF -DPNG_STATIC=ON -DPNG_FRAMEWORK=OFF \
     -DPNG_TESTS=OFF -DPNG_TOOLS=OFF
 cmake --build "$png_build" --target install --parallel 8
+
+cmake -S "$repo_root/ref/freetype" -B "$freetype_build" -G Ninja \
+    -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos \
+    -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$device_prefix" \
+    -DFT_DISABLE_BROTLI=ON -DFT_DISABLE_BZIP2=ON \
+    -DFT_DISABLE_HARFBUZZ=ON -DFT_DISABLE_PNG=ON -DFT_DISABLE_ZLIB=ON
+cmake --build "$freetype_build" --target install --parallel 8
+
+cmake -S "$repo_root/ref/harfbuzz" -B "$harfbuzz_build" -G Ninja \
+    -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos \
+    -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$device_prefix" \
+    -DFREETYPE_LIBRARY="$device_prefix/lib/libfreetype.a" \
+    -DFREETYPE_INCLUDE_DIRS="$device_prefix/include/freetype2" \
+    -DFREETYPE_INCLUDE_DIR_ft2build="$device_prefix/include/freetype2" \
+    -DFREETYPE_INCLUDE_DIR_freetype2="$device_prefix/include/freetype2" \
+    -DHB_HAVE_FREETYPE=ON -DHB_HAVE_CORETEXT=OFF -DHB_HAVE_ICU=OFF \
+    -DHB_BUILD_SUBSET=OFF -DHB_BUILD_UTILS=OFF -DHB_BUILD_RASTER=OFF \
+    -DHB_BUILD_VECTOR=OFF -DHB_BUILD_GPU=OFF
+cmake --build "$harfbuzz_build" --target install --parallel 8
 
 cmake -S "$repo_root/ref/mbedtls" -B "$mbedtls_build" -G Ninja \
     -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos \
@@ -77,6 +100,12 @@ cmake -S "$repo_root/engine" -B "$device_build" -G Ninja \
     -DLIBLZMA_LIBRARY_RELEASE="$device_prefix/lib/liblzma.a" \
     -DPNG_PNG_INCLUDE_DIR="$device_prefix/include" \
     -DPNG_LIBRARY="$device_prefix/lib/libpng16.a" \
+    -DFREETYPE_LIBRARY="$device_prefix/lib/libfreetype.a" \
+    -DFREETYPE_LIBRARY_RELEASE="$device_prefix/lib/libfreetype.a" \
+    -DFREETYPE_INCLUDE_DIR_ft2build="$device_prefix/include/freetype2" \
+    -DFREETYPE_INCLUDE_DIR_freetype2="$device_prefix/include/freetype2" \
+    -DHarfbuzz_LIBRARY="$device_prefix/lib/libharfbuzz.a" \
+    -DHarfbuzz_INCLUDE_DIR="$device_prefix/include/harfbuzz" \
     -DCURL_INCLUDE_DIR="$device_prefix/include" \
     -DCURL_LIBRARY="$device_prefix/lib/libcurl.a" \
     -DOPENTTDPAD_MBEDTLS_LIBRARIES="$device_prefix/lib/libmbedtls.a;$device_prefix/lib/libmbedx509.a;$device_prefix/lib/libmbedcrypto.a" \

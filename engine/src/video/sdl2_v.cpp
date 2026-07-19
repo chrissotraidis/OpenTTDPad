@@ -35,6 +35,10 @@ extern "C" void OpenTTDPadHaptic(int kind);
 extern "C" void OpenTTDPadPrecisionLoupe(bool visible, double x, double y, double magnification);
 extern "C" void OpenTTDPadMaybeShowTouchHint();
 extern "C" void OpenTTDPadSetToolOverlay(bool active);
+extern "C" void OpenTTDPadSetConstructionPalette(int transport_type);
+extern "C" uint64_t OpenTTDPadTouchSettingsGeneration();
+extern "C" void OpenTTDPadLoadTouchSettings(double *threshold_scale, uint32_t *long_press_ms,
+	bool *expanded_targets, bool *momentum);
 
 static OpenTTDPad::Touch::GestureState _openttdpad_gestures;
 static bool _openttdpad_added_background_pause = false;
@@ -42,6 +46,31 @@ static bool _openttdpad_is_background = false;
 static bool _openttdpad_momentum_active = false;
 static OpenTTDPad::Touch::TouchPoint _openttdpad_momentum_velocity{};
 static uint32_t _openttdpad_momentum_last_tick = 0;
+static uint64_t _openttdpad_touch_settings_generation = 0;
+static void OpenTTDPadStopMomentum();
+
+static void OpenTTDPadRefreshTouchSettings()
+{
+	const uint64_t generation = OpenTTDPadTouchSettingsGeneration();
+	if (generation == _openttdpad_touch_settings_generation) return;
+	double scale = 1.0;
+	uint32_t long_press_ms = 500;
+	bool expanded_targets = true;
+	bool momentum = true;
+	OpenTTDPadLoadTouchSettings(&scale, &long_press_ms, &expanded_targets, &momentum);
+	OpenTTDPad::Touch::Settings settings;
+	settings.tap_slop *= scale;
+	settings.double_tap_slop *= scale;
+	settings.drag_activate *= scale;
+	settings.pinch_activate *= scale;
+	settings.long_press_ms = std::clamp<uint32_t>(long_press_ms, 250, 1000);
+	settings.minimum_target = expanded_targets ? 44.0 : 0.0;
+	if (!momentum) settings.momentum_min_velocity = std::numeric_limits<double>::max();
+	if (_openttdpad_gestures.SetSettings(settings)) {
+		_openttdpad_touch_settings_generation = generation;
+		if (!momentum) OpenTTDPadStopMomentum();
+	}
+}
 
 static void OpenTTDPadInputProbe(const char *kind, int64_t source, double x, double y)
 {
@@ -60,7 +89,14 @@ static Point OpenTTDPadTouchPoint(const SDL_TouchFingerEvent &event)
 static bool OpenTTDPadTouchIsInRejectedEdge(Point point)
 {
 	const double edge = _openttdpad_gestures.GetSettings().edge_reject;
-	return point.x < edge || point.y < edge || point.x >= _screen.width - edge || point.y >= _screen.height - edge;
+	const bool in_edge = point.x < edge || point.y < edge ||
+		point.x >= _screen.width - edge || point.y >= _screen.height - edge;
+	if (!in_edge) return false;
+
+	/* Edge rejection protects viewport gestures from the bezel. It must never
+	 * make safe-area-adjacent toolbar buttons untappable. */
+	Window *window = FindWindowFromPt(point.x, point.y);
+	return window == nullptr || IsPtInWindowViewport(window, point.x, point.y) != nullptr;
 }
 
 static bool OpenTTDPadTouchUsesDirectDrag(Point point)
@@ -664,8 +700,13 @@ bool VideoDriver_SDL_Base::PollEvent()
 	SDL_Event ev;
 
 #ifdef OPENTTDPAD_IOS
+	OpenTTDPadRefreshTouchSettings();
 	if (_game_mode == GM_NORMAL) OpenTTDPadMaybeShowTouchHint();
 	OpenTTDPadSetToolOverlay(_thd.place_mode != HT_NONE);
+	Window *construction_palette = FindWindowByClass(WC_BUILD_TOOLBAR);
+	const int construction_transport = construction_palette != nullptr ?
+		static_cast<int>(construction_palette->window_number) : -1;
+	OpenTTDPadSetConstructionPalette(construction_transport);
 	auto timed_actions = _openttdpad_gestures.Update(SDL_GetTicks());
 	if (!timed_actions.empty()) {
 		OpenTTDPadApplyTouchActions(timed_actions);

@@ -29,36 +29,63 @@ This will define the following variables:
 
 #]=======================================================================]
 
-find_package(PkgConfig QUIET)
-
 set(ICU_KNOWN_COMPONENTS "uc" "i18n" "le" "lx" "io" "data")
 
-foreach(MOD_NAME IN LISTS ICU_FIND_COMPONENTS)
-    if(NOT MOD_NAME IN_LIST ICU_KNOWN_COMPONENTS)
-        message(FATAL_ERROR "Unknown ICU component: ${MOD_NAME}")
+if(OPENTTDPAD_IOS)
+    # Apple ships the public ICU headers and both required components in the
+    # combined libicucore system library. The SDK omits ICU's C++ headers, so
+    # use the exact matching, pinned ICU source headers from ref/. pkg-config
+    # is not available while cross-compiling.
+    set(ICU_SOURCE_ROOT "${CMAKE_SOURCE_DIR}/../ref/icu/icu4c/source")
+    find_path(ICU_SYSTEM_COMMON_INCLUDE_DIR NAMES unicode/utypes.h
+        HINTS "${ICU_SOURCE_ROOT}/common" NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+    find_path(ICU_SYSTEM_I18N_INCLUDE_DIR NAMES unicode/coll.h
+        HINTS "${ICU_SOURCE_ROOT}/i18n" NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
+    find_library(ICU_SYSTEM_LIBRARY NAMES icucore)
+    if(ICU_SYSTEM_COMMON_INCLUDE_DIR AND ICU_SYSTEM_I18N_INCLUDE_DIR AND ICU_SYSTEM_LIBRARY)
+        file(STRINGS "${ICU_SYSTEM_COMMON_INCLUDE_DIR}/unicode/uvernum.h" ICU_VERSION_LINE
+            REGEX "^#define[ \t]+U_ICU_VERSION[ \t]+\".*\"")
+        string(REGEX REPLACE ".*\"([^\"]+)\".*" "\\1" ICU_VERSION "${ICU_VERSION_LINE}")
+        foreach(MOD_NAME IN LISTS ICU_FIND_COMPONENTS)
+            if(NOT MOD_NAME STREQUAL "uc" AND NOT MOD_NAME STREQUAL "i18n")
+                message(FATAL_ERROR "Unsupported iPadOS ICU component: ${MOD_NAME}")
+            endif()
+            set(ICU_COMPONENT_FOUND TRUE)
+            set(ICU_${MOD_NAME}_FOUND TRUE)
+            set(ICU_${MOD_NAME}_LIBRARIES "${ICU_SYSTEM_LIBRARY}")
+            set(ICU_${MOD_NAME}_INCLUDE_DIRS
+                "${ICU_SYSTEM_COMMON_INCLUDE_DIR};${ICU_SYSTEM_I18N_INCLUDE_DIR}")
+        endforeach()
     endif()
-    pkg_check_modules(PC_ICU_${MOD_NAME} QUIET icu-${MOD_NAME})
-
-    # Check the libraries returned by pkg-config really exist.
-    unset(PC_LIBRARIES)
-    foreach(LIBRARY IN LISTS PC_ICU_${MOD_NAME}_LIBRARIES)
-        unset(PC_LIBRARY CACHE)
-        find_library(PC_LIBRARY NAMES ${LIBRARY})
-        if(NOT PC_LIBRARY)
-            unset(PC_ICU_${MOD_NAME}_FOUND)
+else()
+    find_package(PkgConfig QUIET)
+    foreach(MOD_NAME IN LISTS ICU_FIND_COMPONENTS)
+        if(NOT MOD_NAME IN_LIST ICU_KNOWN_COMPONENTS)
+            message(FATAL_ERROR "Unknown ICU component: ${MOD_NAME}")
         endif()
-        list(APPEND PC_LIBRARIES ${PC_LIBRARY})
-    endforeach()
-    unset(PC_LIBRARY CACHE)
+        pkg_check_modules(PC_ICU_${MOD_NAME} QUIET icu-${MOD_NAME})
 
-    if(${PC_ICU_${MOD_NAME}_FOUND})
-        set(ICU_COMPONENT_FOUND TRUE)
-        set(ICU_${MOD_NAME}_FOUND TRUE)
-        set(ICU_${MOD_NAME}_LIBRARIES ${PC_LIBRARIES})
-        set(ICU_${MOD_NAME}_INCLUDE_DIRS ${PC_ICU_${MOD_NAME}_INCLUDE_DIRS})
-        set(ICU_VERSION ${PC_ICU_${MOD_NAME}_VERSION})
-    endif()
-endforeach()
+        # Check the libraries returned by pkg-config really exist.
+        unset(PC_LIBRARIES)
+        foreach(LIBRARY IN LISTS PC_ICU_${MOD_NAME}_LIBRARIES)
+            unset(PC_LIBRARY CACHE)
+            find_library(PC_LIBRARY NAMES ${LIBRARY})
+            if(NOT PC_LIBRARY)
+                unset(PC_ICU_${MOD_NAME}_FOUND)
+            endif()
+            list(APPEND PC_LIBRARIES ${PC_LIBRARY})
+        endforeach()
+        unset(PC_LIBRARY CACHE)
+
+        if(${PC_ICU_${MOD_NAME}_FOUND})
+            set(ICU_COMPONENT_FOUND TRUE)
+            set(ICU_${MOD_NAME}_FOUND TRUE)
+            set(ICU_${MOD_NAME}_LIBRARIES ${PC_LIBRARIES})
+            set(ICU_${MOD_NAME}_INCLUDE_DIRS ${PC_ICU_${MOD_NAME}_INCLUDE_DIRS})
+            set(ICU_VERSION ${PC_ICU_${MOD_NAME}_VERSION})
+        endif()
+    endforeach()
+endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(ICU

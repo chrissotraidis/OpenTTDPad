@@ -310,7 +310,13 @@ target_link_libraries(openttd
 )
 
 if(OPENTTDPAD_IOS)
-    target_link_libraries(openttd SDL2::SDL2main)
+    # Apple's libicucore exports stable, unversioned ICU symbols even though the
+    # SDK reports the matching upstream version. Match Apple's public headers.
+    target_compile_definitions(openttd_lib PRIVATE
+        U_DISABLE_RENAMING=1
+        U_OVERRIDE_CXX_ALLOCATION=0
+    )
+    target_link_libraries(openttd SDL2::SDL2main "-framework CoreText" "-framework UniformTypeIdentifiers")
     target_link_options(openttd PRIVATE
         "LINKER:-force_load,$<TARGET_FILE:SDL2::SDL2main>"
     )

@@ -31,6 +31,18 @@ clone_commit()
     git -C "$destination" checkout --detach "$revision"
 }
 
+apply_patch_once()
+{
+    destination=$1
+    patch_file=$2
+
+    if git -C "$destination" apply --unidiff-zero --reverse --check "$patch_file" >/dev/null 2>&1; then
+        return
+    fi
+    git -C "$destination" apply --unidiff-zero --check "$patch_file"
+    git -C "$destination" apply --unidiff-zero "$patch_file"
+}
+
 download()
 {
     destination=$1
@@ -49,6 +61,10 @@ clone_tag "$ref_dir/SDL2" https://github.com/libsdl-org/SDL.git release-2.32.10
 clone_tag "$ref_dir/xz" https://github.com/tukaani-project/xz.git v5.8.3
 clone_tag "$ref_dir/libpng" https://github.com/pnggroup/libpng.git v1.6.58
 clone_tag "$ref_dir/curl" https://github.com/curl/curl.git curl-8_21_0
+clone_tag "$ref_dir/freetype" https://github.com/freetype/freetype.git VER-2-14-3
+clone_tag "$ref_dir/harfbuzz" https://github.com/harfbuzz/harfbuzz.git 14.2.0
+clone_tag "$ref_dir/icu" https://github.com/unicode-org/icu.git release-78.1
+apply_patch_once "$ref_dir/SDL2" "$repo_root/patches/sdl2-uikit-root-controller.patch"
 clone_commit "$ref_dir/OpenGFX" https://github.com/OpenTTD/OpenGFX.git \
     c51c904f4f6e7466ee73f907520ef7ea9a53bcbb
 clone_commit "$ref_dir/OpenSFX" https://github.com/OpenTTD/OpenSFX.git \
@@ -68,6 +84,10 @@ download "$game_dir/cacert-2026-07-16.pem" \
     https://curl.se/ca/cacert.pem
 download "$game_dir/MPL-2.0.txt" \
     https://www.mozilla.org/media/MPL/2.0/index.815ca599c9df.txt
+download "$game_dir/timgm6mb-soundfont_1.3.orig.tar.gz" \
+    https://deb.debian.org/debian/pool/main/t/timgm6mb-soundfont/timgm6mb-soundfont_1.3.orig.tar.gz
+download "$game_dir/timgm6mb-soundfont_1.3-5.debian.tar.xz" \
+    https://deb.debian.org/debian/pool/main/t/timgm6mb-soundfont/timgm6mb-soundfont_1.3-5.debian.tar.xz
 
 printf '%s  %s\n' \
     8fb65fae8dcae5840f793c0a334860a411f884cc537ea290ce1c52bb64ca007a \
@@ -85,11 +105,20 @@ checksum_file="$game_dir/SHA256SUMS"
 } > "$checksum_file"
 echo "3ff344e30b9b1ed2971044eabb438a08f2e2245ddb5f8ab1a3ad8b63ab4eaf91  $game_dir/cacert-2026-07-16.pem" >> "$checksum_file"
 echo "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85  $game_dir/MPL-2.0.txt" >> "$checksum_file"
+echo "af8f3a00e416dfb262bcaa904a1c84df04a51b72bbc1313aed012bc754bdf99b  $game_dir/timgm6mb-soundfont_1.3.orig.tar.gz" >> "$checksum_file"
+echo "993893c5b6265a3f7972a38d055d450d08873d097a2a2c41b010bd1858cc068c  $game_dir/timgm6mb-soundfont_1.3-5.debian.tar.xz" >> "$checksum_file"
 shasum -a 256 -c "$checksum_file"
 
 mkdir -p "$extract_dir/opengfx" "$extract_dir/opensfx" "$extract_dir/openmsx"
 unzip -qo "$game_dir/opengfx-8.0-all.zip" -d "$extract_dir/opengfx"
 unzip -qo "$game_dir/opensfx-1.0.3-all.zip" -d "$extract_dir/opensfx"
 unzip -qo "$game_dir/openmsx-0.4.2-all.zip" -d "$extract_dir/openmsx"
+if [ ! -f "$game_dir/timgm6mb-soundfont_1.3/TimGM6mb.sf2" ]; then
+    tar -xzf "$game_dir/timgm6mb-soundfont_1.3.orig.tar.gz" -C "$game_dir"
+fi
+if [ ! -f "$game_dir/timgm6mb-debian/debian/copyright" ]; then
+    mkdir -p "$game_dir/timgm6mb-debian"
+    tar -xJf "$game_dir/timgm6mb-soundfont_1.3-5.debian.tar.xz" -C "$game_dir/timgm6mb-debian"
+fi
 
 printf '%s\n' "Reference sources and audited free assets are ready under $ref_dir"

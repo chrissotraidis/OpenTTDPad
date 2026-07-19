@@ -1,0 +1,50 @@
+name: Tagged release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  unsigned-release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Cache reference sources
+        uses: actions/cache@v4
+        with:
+          path: ref
+          key: openttdpad-ref-${{ runner.os }}-${{ hashFiles('scripts/bootstrap-reference.sh', 'patches/**') }}
+      - name: Fetch audited inputs
+        run: ./scripts/bootstrap-reference.sh
+      - name: Build unsigned device app and IPA
+        run: |
+          ./scripts/build-device.sh
+          ./scripts/package-ipa.sh
+      - name: Package corresponding source and patch set
+        run: ./scripts/package-source-release.sh
+      - name: Verify release inventory
+        run: ./scripts/verify-release.sh
+      - name: Write consolidated release checksums
+        run: |
+          cp THIRD_PARTY_NOTICES.md build/artifacts/THIRD_PARTY_NOTICES.md
+          cd build/artifacts
+          shasum -a 256 OpenTTDPad-unsigned.ipa \
+            OpenTTDPad-corresponding-source.tar.gz \
+            OpenTTDPad-downstream.patch THIRD_PARTY_NOTICES.md > SHA256SUMS
+      - name: Publish unsigned artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes \
+            build/artifacts/OpenTTDPad-unsigned.ipa \
+            build/artifacts/OpenTTDPad-unsigned.ipa.sha256 \
+            build/artifacts/OpenTTDPad-corresponding-source.tar.gz \
+            build/artifacts/OpenTTDPad-downstream.patch \
+            build/artifacts/OpenTTDPad-source.sha256 \
+            build/artifacts/THIRD_PARTY_NOTICES.md \
+            build/artifacts/SHA256SUMS

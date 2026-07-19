@@ -15,10 +15,13 @@ eventual tracked `engine/` subtree.
 | `ref/libpng/` | pinned official libpng 1.6.58 source for screenshots/heightmaps |
 | `ref/curl/` | pinned official curl 8.21.0 source for HTTP/HTTPS content access |
 | `ref/mbedtls/` | pinned official Mbed TLS 3.6.6 source used by static curl |
+| `ref/freetype/` | pinned FreeType 2.14.3 source for scalable fonts |
+| `ref/harfbuzz/` | pinned HarfBuzz 14.2.0 source for complex-text shaping |
+| `ref/icu/` | pinned ICU 78.1 source/headers matching the iPadOS SDK library |
 | `ref/OpenGFX/` | current official graphics source/credits reference |
 | `ref/OpenSFX/` | current official sound source/license inventory reference |
 | `ref/OpenMSX/` | current official music source/credits reference |
-| `ref/game-files/` | checksummed official release archives, Mozilla CA bundle and license, extracted free game data, local configs, and saves |
+| `ref/game-files/` | checksummed official release archives, Mozilla CA bundle, TimGM6mb soundfont and Debian license metadata, extracted free game data, local configs, and saves |
 
 ## Rules
 

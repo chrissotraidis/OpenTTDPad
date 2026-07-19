@@ -8,6 +8,7 @@
 
 #include "../../stdafx.h"
 #include "../../debug.h"
+#include "document_manager.h"
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
@@ -100,7 +101,17 @@ static void OpenTTDPadPushLifecycleEvent(Uint32 type)
 	if ([scene isKindOfClass:[UIWindowScene class]]) {
 		OpenTTDPadActiveScene = (UIWindowScene *)scene;
 		OpenTTDPadRequestLandscape(OpenTTDPadActiveScene);
+		NSMutableArray<NSURL *> *urls = [NSMutableArray array];
+		for (UIOpenURLContext *context in connectionOptions.URLContexts) [urls addObject:context.URL];
+		if (urls.count != 0) OpenTTDPadHandleOpenURLs(urls);
 	}
+}
+
+- (void)scene:(UIScene *)scene openURLContexts:(NSSet<UIOpenURLContext *> *)URLContexts
+{
+	NSMutableArray<NSURL *> *urls = [NSMutableArray array];
+	for (UIOpenURLContext *context in URLContexts) [urls addObject:context.URL];
+	OpenTTDPadHandleOpenURLs(urls);
 }
 
 - (void)sceneDidDisconnect:(UIScene *)scene
@@ -151,6 +162,7 @@ extern "C" void OpenTTDPadAttachSDLWindowToScene(SDL_Window *window)
 		info.info.uikit.window.windowScene = scene;
 		OpenTTDPadRequestLandscape(scene);
 	}
+	OpenTTDPadEnsureOptionsButton();
 }
 
 extern "C" const char *OpenTTDPadCACertificatePath()

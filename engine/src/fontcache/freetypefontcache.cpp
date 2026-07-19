@@ -18,6 +18,9 @@
 #include "../fileio_func.h"
 #include "../error_func.h"
 #include "../../os/unix/font_unix.h"
+#ifdef OPENTTDPAD_IOS
+#include "../os/ios/font_ios.h"
+#endif
 #include "truetypefontcache.h"
 
 #include "../table/control_codes.h"
@@ -277,6 +280,9 @@ public:
 #ifdef WITH_FONTCONFIG
 		if (FontConfigFindFallbackFont(settings, language_isocode, callback)) return true;
 #endif /* WITH_FONTCONFIG */
+#ifdef OPENTTDPAD_IOS
+		if (iOSFindFallbackFont(settings, language_isocode, callback)) return true;
+#endif
 
 		return false;
 	}

@@ -23,6 +23,10 @@ changes, update this file before changing architecture or build inputs.
 | curl pin | 8.21.0, commit `68720b4837284335b2d63cb358f8f6ce65f5bc55` | [official curl release table](https://curl.se/docs/releases.html); `ref/curl` | Static HTTP/HTTPS, IPFS/IPNS, and WebSocket client; unused protocols disabled |
 | Mbed TLS pin | 3.6.6 LTS, archive SHA-256 `8fb65fae8dcae5840f793c0a334860a411f884cc537ea290ce1c52bb64ca007a` | [official security release](https://github.com/Mbed-TLS/mbedtls/releases/tag/mbedtls-3.6.6); verified archive under `ref/` | Static TLS backend for curl |
 | HTTPS trust roots | Mozilla CA extract dated 2026-07-16, 119 certificates, SHA-256 `3ff344e30b9b1ed2971044eabb438a08f2e2245ddb5f8ab1a3ad8b63ab4eaf91` | [curl CA extract service](https://curl.se/docs/caextract.html); bundled `cacert.pem` | MPL 2.0 bundle with peer verification retained |
+| FreeType pin | 2.14.3, commit `0a0221a1347e2f1e07c395263540026e9a0aa7c7` | [official tag](https://github.com/freetype/freetype/releases/tag/VER-2-14-3); `ref/freetype` | Static scalable-font rasterizer; GPLv2 license selected for this GPLv2 application |
+| HarfBuzz pin | 14.2.0, commit `b0ffab42d473eb380ad0fcf42730e0f1868cbc97` | [official tag](https://github.com/harfbuzz/harfbuzz/releases/tag/14.2.0); `ref/harfbuzz` | Static complex-text shaper using FreeType |
+| ICU pin | 78.1, commit `049e0d6a420629ac7db77256987d083a563287b5` | [official tag](https://github.com/unicode-org/icu/releases/tag/release-78.1); `ref/icu` | Pinned headers match the SDK's `libicucore`; enables bidi/layout without a bundled dylib |
+| General MIDI soundfont | TimGM6mb 1.3, upstream archive SHA-256 `af8f3a00e416dfb262bcaa904a1c84df04a51b72bbc1313aed012bc754bdf99b` | [Debian source package](https://packages.debian.org/source/sid/timgm6mb-soundfont); Debian metadata archive SHA-256 `993893c5b6265a3f7972a38d055d450d08873d097a2a2c41b010bd1858cc068c` | GPLv2 soundfont drives the native Audio Unit MIDI synthesizer |
 
 ## Free base-content audit
 
@@ -49,6 +53,9 @@ on-demand download; any such choice must be recorded before P1.5 closes.
 | `ref/libpng` | `3061454d980de7d53608f594194cfac722721d2a` (tag v1.6.58) |
 | `ref/curl` | `68720b4837284335b2d63cb358f8f6ce65f5bc55` (tag curl-8_21_0) |
 | `ref/mbedtls` | 3.6.6 release archive, SHA-256 recorded above |
+| `ref/freetype` | `0a0221a1347e2f1e07c395263540026e9a0aa7c7` (tag VER-2-14-3) |
+| `ref/harfbuzz` | `b0ffab42d473eb380ad0fcf42730e0f1868cbc97` (tag 14.2.0) |
+| `ref/icu` | `049e0d6a420629ac7db77256987d083a563287b5` (tag release-78.1) |
 | `ref/OpenGFX` | `c51c904f4f6e7466ee73f907520ef7ea9a53bcbb` |
 | `ref/OpenSFX` | `d0bf8d4deda22d5a7f8d01953433cb2644663e9f` |
 | `ref/OpenMSX` | `312ca0ae46a271fb65ba49674b5e935ca0f41036` |

@@ -2,11 +2,13 @@
 
 A native, touch-first iPadOS adaptation of the current upstream [OpenTTD](https://www.openttd.org) engine: touch-first controls, desktop-quality pointer and keyboard input, desktop-compatible saves, online content, and a reproducible open-source build.
 
-> **Status: native iPad Simulator build running.** The arm64 scene-based app
-> reaches a playable landscape game with audited free assets; save/relaunch/load,
-> HTTPS Online Content, software keyboard, continuous-drag automation, and the
-> precision loupe have been exercised. Explicit source-separated touch routing
-> is under test. Physical-device gates remain open. See
+> **Status: full native Simulator and unsigned device builds are working.**
+> The touch-first app includes audited free assets, desktop-compatible saves,
+> Files import/export, persistent touch settings, verified HTTPS content,
+> international text, and native MIDI playback. The automated touch/lifecycle
+> suite passes all 18 invocations across Pro, base, and mini iPad Simulators.
+> Physical-device input,
+> thermal, and lifecycle gates remain open. See
 > [docs/STATUS.md](docs/STATUS.md).
 
 ## What this project is
@@ -38,8 +40,7 @@ Active implementation records:
 ## Build the iPad Simulator app
 
 ```sh
-./scripts/bootstrap-reference.sh
-./scripts/build-simulator.sh
+./scripts/bootstrap-ios.sh
 ./scripts/run-simulator.sh
 ```
 
@@ -48,7 +49,9 @@ gitignored `ref/` tree. The build uses native host generators, then produces
 arm64 Simulator libraries and the signed local `.app` under `build/`.
 
 For an unsigned arm64 physical-device bundle (installation still requires your
-own signing identity), run `./scripts/build-device.sh`.
+own signing identity), run `./scripts/build-device.sh`. Then create a checksummed
+unsigned IPA with `./scripts/package-ipa.sh` and verify release hygiene with
+`./scripts/verify-release.sh`.
 
 ## Licensing
 

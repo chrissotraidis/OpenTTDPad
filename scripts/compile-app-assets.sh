@@ -18,7 +18,7 @@ rm -rf "$catalog"
 mkdir -p "$icon_set" "$brand_color"
 cp "$repo_root/os/ios/AppIconContents.json" "$icon_set/Contents.json"
 cp "$repo_root/os/ios/BrandTintContents.json" "$brand_color/Contents.json"
-cp "$repo_root/engine/media/openttd.1024.png" "$icon_set/AppIcon.png"
+cp "$repo_root/os/ios/AppIcon.png" "$icon_set/AppIcon.png"
 
 xcrun actool \
     --compile "$app" \

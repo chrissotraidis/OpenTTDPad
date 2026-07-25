@@ -21,7 +21,7 @@ drag and precision hold; exact Rail palette, Autorail construction drag, and
 Cancel; exact Road palette, Autoroad construction drag, and Cancel; lifecycle
 background/foreground recovery; touch settings, left/right control placement,
 plus licenses; and ZIP save
-export. The 2026-07-19 matrix passed **21/21**. Result-bundle paths and the
+export. The 2026-07-24 matrix passed **21/21**. Result-bundle paths and the
 hardware-only limits of that evidence are recorded in `STATUS.md`.
 The runner boots and installs `build/ios-sim/openttd.app` before every suite,
 and the UI assertions enforce 44 pt minimums for the coach, persistent options,

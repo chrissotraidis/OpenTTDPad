@@ -25,11 +25,19 @@ for required in \
     scripts/bootstrap-ios.sh scripts/build-simulator.sh scripts/build-device.sh \
     scripts/compile-app-assets.sh scripts/package-ipa.sh \
     scripts/package-source-release.sh patches/sdl2-uikit-root-controller.patch \
-    os/ios/AppIconContents.json os/ios/BrandTintContents.json; do
+    os/ios/AppIcon.png os/ios/AppIconContents.json os/ios/BrandTintContents.json; do
     if [ ! -f "$repo_root/$required" ]; then
         fail "missing required release input: $required"
     fi
 done
+
+icon_metadata=$(sips -g pixelWidth -g pixelHeight -g hasAlpha \
+    "$repo_root/os/ios/AppIcon.png" 2>/dev/null || true)
+if ! printf '%s\n' "$icon_metadata" | grep -q 'pixelWidth: 1024' ||
+    ! printf '%s\n' "$icon_metadata" | grep -q 'pixelHeight: 1024' ||
+    ! printf '%s\n' "$icon_metadata" | grep -q 'hasAlpha: no'; then
+    fail "app icon must be an opaque 1024 x 1024 PNG"
+fi
 
 for component in OpenTTD SDL xz libpng curl 'Mbed TLS' FreeType HarfBuzz ICU \
     'Mozilla CA' OpenGFX OpenSFX OpenMSX TimGM6mb; do

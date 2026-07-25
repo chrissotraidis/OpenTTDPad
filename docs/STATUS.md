@@ -1,6 +1,6 @@
 # Implementation status
 
-Updated: **2026-07-19**
+Updated: **2026-07-24**
 
 ## Environment
 
@@ -40,9 +40,10 @@ Updated: **2026-07-19**
   device builds, checksummed unsigned IPA, source-release packager, dependency
   inventory, forbidden-asset scan, and six GitHub Actions workflows are tracked
 
-The workflow YAML and scripts pass local syntax/hygiene validation. The GitHub
-jobs themselves remain unexecuted until this branch is pushed; local build and
-Simulator evidence, not an unrun CI declaration, is the proof recorded here.
+The workflow YAML and scripts pass local syntax/hygiene validation. The current
+local tree has not been pushed, so GitHub Actions has not exercised this exact
+revision; local build and Simulator evidence, not an unrun CI declaration, is
+the proof recorded here.
 
 ## Native build and packaging proof
 
@@ -68,15 +69,16 @@ Simulator. FreeType 2.14.3 and HarfBuzz 14.2.0 are static; pinned ICU 78.1
 headers pair with the SDK `libicucore`, and CoreText supplies system fallback
 fonts. The Simulator bundle is ad-hoc signed. The device executable is arm64,
 targets iOS 17.0, links only Apple system dylibs/frameworks, and packages as an
-unsigned IPA. Both bundles contain a compiled native asset catalog and iPad app
-icon derived from tracked upstream GPLv2 artwork. No commercial TTD files are
-present.
+unsigned IPA. Both build paths compile a native asset catalog from the tracked,
+downstream OpenTTDPad app icon. The 1024 × 1024 source is opaque, and the
+current Simulator `Assets.car` contains the matching AppIcon rendition. No
+commercial TTD files are present.
 
 Final unsigned IPA:
 
 ```text
 build/artifacts/OpenTTDPad-unsigned.ipa
-SHA-256 38e513f65b9fe9b81b8ee2d1c45df7d20cc7f40c2e4c13b2a677d75e4889f21e
+SHA-256 365e049461eb4108e2224860fa84f4a8568054cbfd7f5d4f8787f39dff336e26
 ```
 
 Two consecutive packaging runs produced that same checksum. The IPA packager
@@ -110,6 +112,7 @@ Evidence:
 - [save restored after process relaunch](evidence/p0-ios-reloaded-save.png)
 - [HTTPS Online Content catalog](evidence/p3-ios-online-content.png)
 - [Arabic right-to-left UI rendered with system fallback](evidence/p3-ios-arabic-rtl.png)
+- [fresh 2026-07-24 Simulator launch](evidence/2026-07-24-simulator-launch.png)
 
 The initial dependency spike omitted liblzma and could not reopen an LZMA save.
 That failure was captured in the Simulator console and corrected by adding
@@ -153,6 +156,9 @@ the UI. Real mouse/trackpad events remain on upstream's unchanged mouse path.
 Host verification:
 
 ```text
+ctest --test-dir build/macos --output-on-failure --exclude-regex '^regression_' --timeout 300
+100% tests passed, 111/111 (2026-07-24)
+
 ctest --test-dir build/macos-touch -R OpenTTDPad --output-on-failure
 100% tests passed, 17/17
 
@@ -167,13 +173,14 @@ background/foreground round-trip; native touch settings and licenses; ZIP save
 export/share sheet
 ```
 
-All seven scenarios passed on every tested size class (**21/21 invocations**):
+All seven scenarios passed again on every tested size class on 2026-07-24
+(**21/21 fresh invocations**):
 
 | Simulator | Result bundle |
 |---|---|
-| iPad Pro 13-inch (M5) | `build/xcode-derived-data-ui/Logs/Test/Test-OpenTTDPadUITests-2026.07.19_08-29-35--0500.xcresult` |
-| iPad (A16) | `build/xcode-derived-data-ui/Logs/Test/Test-OpenTTDPadUITests-2026.07.19_08-32-41--0500.xcresult` |
-| iPad mini (A17 Pro) | `build/xcode-derived-data-ui/Logs/Test/Test-OpenTTDPadUITests-2026.07.19_08-39-17--0500.xcresult` |
+| iPad Pro 13-inch (M5) | `build/xcode-derived-data-ui/Logs/Test/Test-OpenTTDPadUITests-2026.07.24_22-58-19--0500.xcresult` |
+| iPad (A16) | `build/xcode-derived-data-ui/Logs/Test/Test-OpenTTDPadUITests-2026.07.24_23-01-44--0500.xcresult` |
+| iPad mini (A17 Pro) | `build/xcode-derived-data-ui/Logs/Test/Test-OpenTTDPadUITests-2026.07.24_23-05-44--0500.xcresult` |
 
 The UI runner resolves and boots the requested Simulator, waits for it to be
 ready, and installs `build/ios-sim/openttd.app` before XCTest. This closes a

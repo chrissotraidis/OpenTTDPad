@@ -25,6 +25,7 @@ struct TouchPoint {
 enum class State : uint8_t {
 	Idle,
 	Pending,
+	OneFingerSuppressed,
 	TwoFingerPending,
 	Panning,
 	DirectDragging,
@@ -60,7 +61,8 @@ struct Action {
 /**
  * Recognizes touch intent without depending on SDL or OpenTTD globals.
  * The caller decides at first-finger-down whether a drag at that position
- * should go to a desktop UI/construction tool or should pan the map.
+ * should go to a desktop UI/construction tool. Bare one-finger map movement
+ * is suppressed; map panning begins only after a second finger lands.
  */
 class GestureState {
 public:
@@ -100,6 +102,7 @@ private:
 	uint32_t last_pan_move_ms = 0;
 	bool two_finger_tap_possible = false;
 	uint32_t two_finger_start_ms = 0;
+	uint32_t two_finger_contact_ms = 0;
 	bool has_last_tap = false;
 	TouchPoint last_tap_position{};
 	uint32_t last_tap_ms = 0;

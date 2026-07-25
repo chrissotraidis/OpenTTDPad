@@ -23,7 +23,7 @@ struct Settings {
 	uint32_t two_tap_max_ms = 250;
 	uint32_t two_tap_stagger_ms = 100;
 	double pinch_activate = 24.0;
-	double pinch_step_factor = 1.4;
+	double pinch_step_factor = 1.25;
 	double precision_magnification = 2.0;
 	double precision_offset = 60.0;
 	double edge_reject = 8.0;

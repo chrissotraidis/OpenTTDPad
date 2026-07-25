@@ -3,10 +3,17 @@ import XCTest
 final class OpenTTDPadUITests: XCTestCase {
     private let bundleIdentifier = "org.openttd.OpenTTDPad"
 
+    private func attachScreenshot(_ name: String) {
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     private func launchGame(environment: [String: String] = [:]) -> XCUIApplication {
         let app = XCUIApplication(bundleIdentifier: bundleIdentifier)
         app.launchArguments = ["-g", "-G", "1"]
-        app.launchEnvironment = environment
+        app.launchEnvironment = ["OPENTTDPAD_SKIP_HINTS": "1"].merging(environment) { _, requested in requested }
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 8))
         sleep(3)
@@ -29,10 +36,13 @@ final class OpenTTDPadUITests: XCTestCase {
         XCTAssertTrue(app.windows.firstMatch.exists)
     }
 
-    func testContinuousMapDragAndLongPress() throws {
+    func testOneFingerMapMoveAndLongPressPrecision() throws {
         let app = launchGame()
         let surface = app.windows.firstMatch
         XCTAssertTrue(surface.waitForExistence(timeout: 5))
+
+        surface.coordinate(withNormalizedOffset: CGVector(dx: 0.62, dy: 0.62)).tap()
+        attachScreenshot("OpenTTDPad visible one-finger cursor")
 
         let start = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.72, dy: 0.70))
         let end = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.42, dy: 0.44))
@@ -43,7 +53,7 @@ final class OpenTTDPadUITests: XCTestCase {
 
         let screenshot = XCUIScreen.main.screenshot()
         let attachment = XCTAttachment(screenshot: screenshot)
-        attachment.name = "OpenTTDPad after continuous drag and precision press"
+        attachment.name = "OpenTTDPad after suppressed one-finger map move and precision press"
         attachment.lifetime = .keepAlways
         add(attachment)
     }
@@ -77,14 +87,9 @@ final class OpenTTDPadUITests: XCTestCase {
         let cancelStartedOnLeft = cancel.frame.midX < surface.frame.midX
         options.tap()
         app.buttons["Touch Controls"].tap()
-        XCTAssertTrue(app.buttons["Layout & Feedback"].waitForExistence(timeout: 2))
-        app.buttons["Layout & Feedback"].tap()
-        let controlSide = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Controls side:")).firstMatch
+        let controlSide = app.segmentedControls["Controls side"]
         XCTAssertTrue(controlSide.waitForExistence(timeout: 2))
-        let originalControlSide = controlSide.label
-        controlSide.tap()
-        XCTAssertTrue(app.buttons["Back to Touch Controls"].waitForExistence(timeout: 2))
-        app.buttons["Back to Touch Controls"].tap()
+        controlSide.buttons[cancelStartedOnLeft ? "Right" : "Left"].tap()
         XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 2))
         app.buttons["Done"].tap()
         XCTAssertNotEqual(cancel.frame.midX < surface.frame.midX, cancelStartedOnLeft)
@@ -101,13 +106,9 @@ final class OpenTTDPadUITests: XCTestCase {
         /* Restore the persisted preference so every scenario is isolated. */
         options.tap()
         app.buttons["Touch Controls"].tap()
-        XCTAssertTrue(app.buttons["Layout & Feedback"].waitForExistence(timeout: 2))
-        app.buttons["Layout & Feedback"].tap()
-        let restoredControlSide = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Controls side:")).firstMatch
+        let restoredControlSide = app.segmentedControls["Controls side"]
         XCTAssertTrue(restoredControlSide.waitForExistence(timeout: 2))
-        restoredControlSide.tap()
-        XCTAssertTrue(app.buttons[originalControlSide].waitForExistence(timeout: 2))
-        app.buttons["Back to Touch Controls"].tap()
+        restoredControlSide.buttons[cancelStartedOnLeft ? "Left" : "Right"].tap()
         XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 2))
         app.buttons["Done"].tap()
     }
@@ -161,53 +162,62 @@ final class OpenTTDPadUITests: XCTestCase {
         let surface = app.windows.firstMatch
         let options = app.buttons["OpenTTDPad options"]
         XCTAssertTrue(options.waitForExistence(timeout: 5))
-        XCTAssertGreaterThanOrEqual(options.frame.width, 44)
-        XCTAssertGreaterThanOrEqual(options.frame.height, 44)
+        XCTAssertTrue(options.isHittable)
+        /* The landscape game is projected through XCTest's portrait host, so
+         * its external accessibility frame is smaller than UIKit's 44 pt
+         * source frame. Guard against the former oversized 66 pt projection. */
+        XCTAssertGreaterThanOrEqual(options.frame.width, 30)
+        XCTAssertGreaterThanOrEqual(options.frame.height, 30)
+        XCTAssertLessThanOrEqual(options.frame.width, 46)
+        XCTAssertGreaterThan(options.frame.midY, surface.frame.height * 0.75)
+        options.tap()
+        XCTAssertTrue(app.buttons["Touch Controls"].waitForExistence(timeout: 2))
+        attachScreenshot("01 OpenTTDPad options")
+        options.tap()
+        XCTAssertFalse(app.buttons["Touch Controls"].waitForExistence(timeout: 1))
         options.tap()
         XCTAssertTrue(app.buttons["Touch Controls"].waitForExistence(timeout: 2))
         app.buttons["Touch Controls"].tap()
 
-        let response = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Gesture response:")).firstMatch
-        let precision = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Precision hold:")).firstMatch
-        let targets = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Enlarged controls:")).firstMatch
-        XCTAssertTrue(response.waitForExistence(timeout: 2))
+        XCTAssertTrue(app.navigationBars["Touch Controls"].waitForExistence(timeout: 3))
+        let response = app.segmentedControls["Gesture response"]
+        let precision = app.segmentedControls["Precision hold"]
+        let targets = app.switches["Enlarged controls"]
+        let momentum = app.switches["Map glide"]
+        let side = app.segmentedControls["Controls side"]
+        let haptics = app.switches["Haptics"]
+        XCTAssertTrue(response.exists)
         XCTAssertTrue(precision.exists)
         XCTAssertTrue(targets.exists)
-        XCTAssertTrue(app.buttons["Layout & Feedback"].exists)
-        app.buttons["Layout & Feedback"].tap()
-
-        let side = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Controls side:")).firstMatch
-        let haptics = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Haptics:")).firstMatch
+        XCTAssertTrue(momentum.exists)
         XCTAssertTrue(side.exists)
         XCTAssertTrue(haptics.exists)
+        attachScreenshot("02 OpenTTDPad touch controls")
 
         let startedOnLeft = options.frame.midX < surface.frame.midX
-        let originalSideLabel = side.label
-        side.tap()
-        let changedSide = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Controls side:")).firstMatch
-        XCTAssertTrue(changedSide.waitForExistence(timeout: 2))
-        XCTAssertNotEqual(changedSide.label, originalSideLabel)
+        side.buttons[startedOnLeft ? "Right" : "Left"].tap()
         XCTAssertNotEqual(options.frame.midX < surface.frame.midX, startedOnLeft)
-        changedSide.tap()
-        XCTAssertTrue(app.buttons[originalSideLabel].waitForExistence(timeout: 2))
+        side.buttons[startedOnLeft ? "Left" : "Right"].tap()
+        XCTAssertEqual(options.frame.midX < surface.frame.midX, startedOnLeft)
 
-        let currentHaptics = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Haptics:")).firstMatch
-        let originalHapticsLabel = currentHaptics.label
-        currentHaptics.tap()
-        let changedHaptics = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Haptics:")).firstMatch
-        XCTAssertTrue(changedHaptics.waitForExistence(timeout: 2))
-        XCTAssertNotEqual(changedHaptics.label, originalHapticsLabel)
-        changedHaptics.tap()
-        XCTAssertTrue(app.buttons[originalHapticsLabel].waitForExistence(timeout: 2))
-
-        app.buttons["Back to Touch Controls"].tap()
-        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 2))
+        let originalHapticsValue = haptics.value as? String
+        haptics.tap()
+        XCTAssertNotEqual(haptics.value as? String, originalHapticsValue)
+        haptics.tap()
+        XCTAssertEqual(haptics.value as? String, originalHapticsValue)
         app.buttons["Done"].tap()
         options.tap()
         XCTAssertTrue(app.buttons["Licenses & Credits"].waitForExistence(timeout: 2))
         app.buttons["Licenses & Credits"].tap()
         XCTAssertTrue(app.navigationBars["Licenses & Credits"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.textViews["OpenTTDPad licenses and credits"].exists)
+        XCTAssertTrue(app.segmentedControls["License section"].exists)
+        attachScreenshot("03 OpenTTDPad licenses and credits")
+        app.segmentedControls["License section"].buttons["OpenTTD License"].tap()
+        let licenseText = app.textViews["OpenTTDPad licenses and credits"].value as? String ?? ""
+        XCTAssertFalse(licenseText.contains("###"))
+        XCTAssertFalse(licenseText.contains("**0.**"))
+        attachScreenshot("04 OpenTTD license")
         app.buttons["Done"].tap()
     }
 
@@ -219,6 +229,10 @@ final class OpenTTDPadUITests: XCTestCase {
         sleep(3)
         app.activate()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 8))
+        /* The iPad Dock remains an external accessibility overlay briefly
+         * after activation and can swallow a lower-corner tap even though
+         * XCTest already reports the app as foreground. */
+        sleep(1)
 
         let options = app.buttons["OpenTTDPad options"]
         let export = app.buttons["Export All Saves"]

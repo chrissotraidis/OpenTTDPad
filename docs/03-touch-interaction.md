@@ -16,7 +16,7 @@ The complete touch behavior contract. This is the highest-product-risk area of t
 |----|---------|------------------|
 | TI-3 | Tap map object | Select or activate the object |
 | TI-4 | Tap empty map tile | Set tool target or inspect tile |
-| TI-5 | Drag on empty map (no construction tool active) | Pan viewport |
+| TI-5 | One-finger move on empty map (no construction tool active) | Move the visible touch cursor with the finger without panning; lift to tap, or hold for precision |
 | TI-6 | Pinch | Zoom map (continuous feel; §5.4) |
 | TI-7 | Two-finger drag | **Always** pan map, regardless of active tool |
 | TI-8 | Two-finger tap | Secondary click (right-click semantics) |
@@ -33,7 +33,7 @@ Construction tools create the largest gesture conflict: a one-finger drag may pl
 
 **Binding rules:**
 
-- **TI-15.** When no construction tool is active, one-finger dragging pans.
+- **TI-15.** When no construction tool is active, one-finger movement does not pan. This preserves one finger for direct interaction and precision; use two fingers to move the map.
 - **TI-16.** When a line-construction tool is active (rail, road, canal, etc.), one-finger dragging constructs.
 - **TI-17.** Two-finger dragging always pans (escape hatch, consistent with TI-7).
 - **TI-18.** A visible tool-state indicator shall make the active drag behavior obvious at a glance (e.g. active-tool highlight plus a small "drag builds / drag pans" glyph near the toolbar).
@@ -62,7 +62,7 @@ IDLE
  ├─ finger 1 down ────────────────► PENDING (start pos, start time recorded)
  ├─ finger 2 down while PENDING ──► TWO_FINGER_PENDING
 PENDING
- ├─ movement > DRAG_ACTIVATE_PT & no line tool ──► PANNING
+ ├─ movement > DRAG_ACTIVATE_PT & no line tool ──► ONE_FINGER_SUPPRESSED
  ├─ movement > DRAG_ACTIVATE_PT & line tool ─────► CONSTRUCTING
  ├─ hold > LONG_PRESS_MS, movement < TAP_SLOP_PT ─► PRECISION
  ├─ up within TAP_MAX_MS, movement < TAP_SLOP_PT ─► emit TAP → IDLE
@@ -70,9 +70,10 @@ TWO_FINGER_PENDING
  ├─ both up within TWO_TAP_MAX_MS, low movement ──► emit SECONDARY_CLICK → IDLE
  ├─ inter-finger distance delta > PINCH_ACTIVATE_PT ─► PINCHING
  ├─ centroid movement > DRAG_ACTIVATE_PT ─────────► PANNING (two-finger)
-PANNING      ── one finger up reanchors at the remaining finger; all up → IDLE
+ONE_FINGER_SUPPRESSED ── movement does nothing; finger up → IDLE; second finger down → TWO_FINGER_PENDING
+PANNING      ── stays a pan until either finger lifts; lift ends movement and suppresses the remaining finger
 CONSTRUCTING ── finger up commits → IDLE; second finger down → abort construct, → TWO_FINGER_PENDING
-PINCHING     ── continuous zoom; one finger up → PANNING; all up → IDLE
+PINCHING     ── stays a pinch until either finger lifts; lift ends the gesture and suppresses the remaining finger
 PRECISION    ── finger up → act → IDLE; cancel → IDLE
 ```
 
@@ -81,8 +82,8 @@ Notes:
 - **5.1 Double-tap detection (TI-12)** wraps TAP emission: a second TAP within `DOUBLE_TAP_MS` and `DOUBLE_TAP_SLOP_PT` of the first becomes DOUBLE_TAP; otherwise the first TAP is delivered after the window closes *only* for double-tap-sensitive targets — plain buttons fire immediately (no perceived lag on common taps).
 - **5.2 Palm/edge rejection:** fingers landing in the outermost `EDGE_REJECT_PT` band participate only in system gestures; ignore for game input.
 - **5.3 Momentum:** viewport panning gets standard deceleration (flick momentum) matching platform feel; construction drags never have momentum.
-- **5.4 Pinch zoom (TI-6):** continuous from the user's perspective even though OpenTTD zoom is discrete — accumulate scale factor and step the engine zoom when crossing per-level thresholds, keeping the zoom centered on the finger midpoint (translate viewport so the world point under the midpoint stays under it). The Android fork demonstrates threshold-based pinch-to-wheel translation; reimplement (prime directive 6).
-- **5.5 Finger-count transitions:** when a two-finger pan or pinch drops to one finger, the recognizer resets its centroid and velocity at the remaining contact before continuing. This prevents a discontinuous viewport jump and prevents two-finger momentum leaking into the one-finger gesture.
+- **5.4 Pinch zoom (TI-6):** SDL reports the two contacts separately, so the recognizer uses a short intent window before choosing pan or pinch. Once chosen, the gesture stays in that mode until lift: parallel motion cannot accidentally zoom, while deliberate spacing changes emit every crossed discrete zoom step around the finger midpoint.
+- **5.5 Finger-count transitions:** when a two-finger pan or pinch drops to one finger, the recognizer ends map movement immediately and suppresses the remaining contact until lift. This prevents a discontinuous viewport jump and preserves the rule that map movement always requires two fingers.
 
 ## 6. Tunable constants (single source of truth)
 
@@ -99,7 +100,7 @@ Defined in `src/touch/touch_settings.hpp`; defaults below, all in points (pt) an
 | `TWO_TAP_MAX_MS` | 250 | — | Two-finger-tap max duration |
 | `TWO_TAP_STAGGER_MS` | 100 | — | Max delay between the two finger-downs |
 | `PINCH_ACTIVATE_PT` | 24 | — | Inter-finger distance change to enter PINCHING |
-| `PINCH_STEP_FACTOR` | 1.4 | — | Scale ratio per discrete zoom step |
+| `PINCH_STEP_FACTOR` | 1.25 | — | Scale ratio per discrete zoom step |
 | `PRECISION_MAG` | 2.0× | 1.5–3.0 | Loupe magnification |
 | `PRECISION_OFFSET_PT` | 60 | — | Crosshair offset above fingertip |
 | `EDGE_REJECT_PT` | 8 | — | Edge band ignored for game input |
@@ -143,14 +144,13 @@ Concrete numeric scale values are chosen at task P2.8 by on-device evaluation an
 | Left-handed toolbar preference | off |
 | Auto-hide touch hints when pointer connected | on |
 
-The native Touch Controls sheet currently exposes gesture response,
-long-press duration, touch-target expansion, map momentum, left/right control
-placement, haptics, and touch-tip reset. Left/right placement moves both the
-always-available options control and the active construction Cancel affordance;
-the nearby tool hint is clamped inside the safe area. Both settings levels use
-an explicit visible Done action because iPad action-sheet popovers omit
-cancel-style actions.
+The native Touch Controls form exposes gesture response, long-press duration,
+touch-target expansion, map glide, left/right control placement, haptics, and
+touch-tip reset in one screen. Left/right placement moves both the compact
+lower-corner options control and the active construction Cancel affordance; the
+nearby tool hint is clamped inside the safe area. The form has an explicit Done
+action.
 
 ## 9. Touch onboarding hints
 
-First-run contextual hints (dismissable, never modal mid-game): one-time overlay explaining pan/zoom/two-finger rules on first map view; first-tool-activation hint explaining TI-16/TI-17; precision-mode discovery hint the first time a small-target tap misses twice in succession. Hints suppressed permanently once each is dismissed, and all suppressed when a pointer is the active input (per auto-hide setting).
+First-run contextual hints (dismissable, never modal mid-game): one-time overlay explaining direct taps, one-finger construction, two-finger map movement, pinch, and precision on first map view; first-tool-activation hint explaining TI-16/TI-17; precision-mode discovery hint the first time a small-target tap misses twice in succession. The first map hint also dismisses itself after ten seconds so it cannot remain over gameplay. Hints are suppressed permanently once dismissed, and all are suppressed when a pointer is the active input (per auto-hide setting).

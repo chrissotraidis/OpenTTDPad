@@ -243,7 +243,9 @@ extern "C" void OpenTTDPadMaybeShowTouchHint()
 		if (window == nil || OpenTTDPadTouchHint != nil) return;
 
 		const CGFloat scale = OpenTTDPadOverlayScale(window);
-		const CGFloat width = std::min<CGFloat>(520.0 * scale, CGRectGetWidth(window.bounds) - 40.0 * scale);
+		/* Leave both thumb-control lanes clear, including on the compact iPad
+		 * Simulator canvas where the previous coach covered the options button. */
+		const CGFloat width = std::min<CGFloat>(520.0 * scale, CGRectGetWidth(window.bounds) - 176.0 * scale);
 		OpenTTDPadTouchHint = [[UIView alloc] initWithFrame:CGRectMake(0, 0, width, 104.0 * scale)];
 		OpenTTDPadTouchHint.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.94];
 		OpenTTDPadTouchHint.layer.cornerRadius = 18.0 * scale;
@@ -260,7 +262,7 @@ extern "C" void OpenTTDPadMaybeShowTouchHint()
 
 		UILabel *body = [[[UILabel alloc] initWithFrame:CGRectMake(20.0 * scale, 39.0 * scale,
 			width - 120.0 * scale, 52.0 * scale)] autorelease];
-		body.text = @"Drag the map to pan · Pinch to zoom\nTwo-finger tap for details · Hold for precision";
+		body.text = @"Tap to interact · Drag with tools to build\nTwo-finger drag to move · Pinch to zoom · Hold for precision";
 		body.numberOfLines = 2;
 		body.textColor = [UIColor colorWithWhite:0.86 alpha:1.0];
 		body.font = [UIFont systemFontOfSize:14.0 * scale];
@@ -281,6 +283,9 @@ extern "C" void OpenTTDPadMaybeShowTouchHint()
 		OpenTTDPadTouchHint.center = CGPointMake(CGRectGetMidX(window.bounds),
 			CGRectGetMaxY(window.bounds) - safe.bottom - 72.0 * scale);
 		[window addSubview:OpenTTDPadTouchHint];
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 10 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+			if (OpenTTDPadTouchHint != nil) [[OpenTTDPadOverlayActions shared] dismissTouchHint];
+		});
 	});
 }
 

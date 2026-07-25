@@ -1,6 +1,6 @@
 # Implementation status
 
-Updated: **2026-07-24**
+Updated: **2026-07-26**
 
 ## Environment
 
@@ -11,8 +11,11 @@ Updated: **2026-07-24**
 - Simulator matrix: iPad Pro 13-inch (M5), iPad (A16), and iPad mini (A17 Pro),
   all on iOS 26.5
 - Apple Clang: 21.0.0; CMake: 4.4.0; Ninja: 1.13.2
-- Physical iPad: not connected. Hardware-only acceptance remains open and is
-  never represented as a Simulator pass.
+- Physical iPad: iPad Pro (`iPad14,5`) on iPadOS 26.5.2 is connected. The
+  revised arm64 app was signed, installed in place, launched, cleanly
+  terminate-and-relaunched, and confirmed as live device process PID 4804 on
+  2026-07-26. Finger-feel and visible lifecycle acceptance remain open and are
+  never represented as a build, process, or Simulator pass.
 
 ## Roadmap
 
@@ -126,14 +129,16 @@ single source of truth for the thresholds specified by doc 03. The recognizer
 currently emits:
 
 - direct tap and double-tap;
-- delayed map pan only after the deliberate-drag threshold;
+- one-finger tap and selected-tool drag, with bare one-finger map movement
+  suppressed;
 - desktop-primary drag for UI widgets and active construction tools;
 - unconditional two-finger pan;
 - two-finger secondary click;
-- thresholded pinch zoom around the current centroid;
+- intent-locked multi-step pinch zoom, separated from parallel two-finger pan;
 - long-press precision entry/move/commit events;
 - momentum only after viewport pan;
-- seamless reanchoring when a two-finger pan or pinch drops to one finger;
+- immediate pan/pinch stop when either finger lifts, preventing an accidental
+  one-finger continuation;
 - construction abort when a second finger lands;
 - cancellation and button-state cleanup on focus loss.
 
@@ -141,12 +146,11 @@ Touch-only hit testing expands eligible undersized controls to at least 44 pt
 without changing their drawn geometry. A 132 pt native loupe follows precision
 mode, the first-run coach explains the gesture grammar, active construction has
 a persistent 44+ pt Cancel control, and touch actions provide light haptics.
-The native settings sheet can put the options and construction controls on the
+The native settings form can put the options and construction controls on the
 left or right for thumb reach and can disable haptic feedback. Tool hints stay
-clamped inside the safe area on either side. The UIKit overlays compensate for
-SDL's high-DPI coordinate space, and XCTest asserts the coach, options, and
-active-tool controls remain at least 44 pt on screen. Both settings sheets
-provide an explicit visible Done action on iPad.
+clamped inside the safe area on either side. The options button uses a compact
+44 pt UIKit source frame in the lower corner and toggles its menu closed on a
+second tap. The form provides an explicit visible Done action on iPad.
 
 SDL's `TOUCH_MOUSE_EVENTS` and `MOUSE_TOUCH_EVENTS` hints are disabled on iOS.
 Raw Simulator tapping produced `finger-down` and `finger-up` probe lines with
@@ -156,22 +160,28 @@ the UI. Real mouse/trackpad events remain on upstream's unchanged mouse path.
 Host verification:
 
 ```text
-ctest --test-dir build/macos --output-on-failure --exclude-regex '^regression_' --timeout 300
-100% tests passed, 111/111 (2026-07-24)
-
-ctest --test-dir build/macos-touch -R OpenTTDPad --output-on-failure
-100% tests passed, 17/17
-
-ctest --test-dir build/macos-touch --output-on-failure
-100% tests passed, 113/113
+ctest --test-dir build/macos --output-on-failure
+100% tests passed, 114/114 (2026-07-26)
 
 ./scripts/test-simulator-ui.sh
-7 XCTest UI scenarios: 44 pt native controls; continuous map drag + precision press; touch-only Rail
-and Road palettes, construction selection, continuous construction drags, and
-cancellation; live left/right active-tool placement; first-run coach;
-background/foreground round-trip; native touch settings and licenses; ZIP save
-export/share sheet
+7 XCTest UI scenarios: native controls; visible one-finger cursor, suppressed
+bare one-finger map movement + precision press; touch-only Rail and Road palettes, construction
+selection, continuous construction drags, and cancellation; live left/right
+active-tool placement; first-run coach; background/foreground round-trip;
+native touch settings, menu toggle, and formatted licenses; ZIP save export/share sheet
 ```
+
+The revised iPad Pro Simulator suite passed **7/7** on 2026-07-26. Its clean
+run covered the lower-corner options control and upward-opening popovers,
+foreground recovery, export after reactivation, the revised one-finger path,
+and the compact first-run coach:
+
+```text
+build/xcode-derived-data-ui/Logs/Test/Test-OpenTTDPadUITests-2026.07.26_00-39-01-+0700.xcresult
+```
+
+The host recognizer suite owns the exact simultaneous two-finger event
+semantics; XCTest does not substitute for physical two-finger feel.
 
 All seven scenarios passed again on every tested size class on 2026-07-24
 (**21/21 fresh invocations**):
@@ -200,26 +210,25 @@ menu need different normalized targets than compact iPads. The suite now
 asserts the exact transport palette on every size before construction. Physical
 multitouch, Pencil, and real pointer feel remain hardware gates.
 
-This iteration also caught two native-control defects. SDL's high-DPI window
-coordinates made visually declared 52 pt controls measure only 26 pt to
-XCTest; overlay geometry now scales to real screen points and is guarded by
-minimum-target assertions. iPad action-sheet popovers omit cancel-style actions,
-so Touch Controls and Layout & Feedback now expose a normal Done action instead
-of relying on outside-tap dismissal.
+This iteration replaced the oversized persistent options control with a compact
+44 pt UIKit source frame and verified that tapping it again closes its popover.
+Touch Controls is now one native form instead of nested action sheets, and
+Licenses & Credits formats bundled component metadata instead of displaying raw
+Markdown.
 
 ## Experiment ledger
 
 | Experiment | State | Evidence / remaining gate |
 |---|---|---|
-| EXP-1 iOS arm64 compile | Build pass | arm64 Simulator and unsigned arm64 device bundles link; hardware install remains |
-| EXP-2 visible iPad window | Partial | scene-based Simulator frame/playable map; physical iPad remains |
+| EXP-1 iOS arm64 compile | Device pass | arm64 Simulator/device bundles link; the 2026-07-25 device bundle was signed, installed in place, and launched |
+| EXP-2 visible iPad window | Partial | the first physical build rendered and was exercised, but the revised build still needs user-visible acceptance after process-verified launch |
 | EXP-3 software rendering | Partial | live Simulator gameplay; device performance/thermal remains |
 | EXP-4 free content | Partial | all three audited free sets load offline in Simulator; physical remains |
 | EXP-5 sandbox writes | Simulator pass | `.sav` confirmed in sandbox and loaded after force-terminate/relaunch |
 | EXP-6 physical pointer | Open | genuine mouse/trackpad hardware required |
 | EXP-7 touch separation | Simulator pass | raw finger-only probe after both SDL synthesis hints disabled |
 | EXP-8 software keyboard | Partial | save-name field shown and typed in Simulator; device/hardware keyboard remains |
-| EXP-9 lifecycle loop | Partial | one background/foreground recovery cycle passes on all three Simulators; ten-cycle physical run remains |
+| EXP-9 lifecycle loop | Partial | Simulator recovery passes; the first physical build exposed an in-game Exit black-screen path, now removed on iOS, and the revised physical flow still needs user confirmation plus the ten-cycle run |
 | EXP-10 touch construction | Simulator integration pass; usability gate open | finger-only Rail and Road palettes → direct tools → continuous placement drags → native Cancel pass across three size classes; full T-GAME route and five-person first-use trial remain |
 
 ## P0.1 baseline proof
@@ -238,8 +247,10 @@ The isolated build found OpenGFX 8.0, OpenSFX 1.0.3, and OpenMSX 0.4.2. See
 
 ## Current next proof
 
-Exercise the complete touch-only road/rail/vehicle/orders T-GAME route with
-first-time users, then run physical-device pointer/Pencil/multitouch, audio
-route, performance/thermal, ten-cycle lifecycle, and desktop save round-trip
-gates when an iPad is connected. Simulator-verifiable implementation and
-automation are complete; hardware-only gates stay explicitly open.
+On the installed revised build, confirm one-finger object interaction,
+two-finger map movement, selected-tool drags, Save-menu tooltip behavior, and
+Quit Game → title → process relaunch. Then exercise the complete touch-only
+road/rail/vehicle/orders T-GAME route and run physical pointer/Pencil, audio,
+performance/thermal, ten-cycle lifecycle, and desktop save round-trip gates.
+Simulator-verifiable implementation and automation are complete; hardware-only
+gates stay explicitly open.

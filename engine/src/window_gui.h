@@ -1035,6 +1035,7 @@ extern uint8_t _scroller_click_timeout;
 
 extern bool _scrolling_viewport;
 extern bool _mouse_hovering;
+extern bool _touch_cursor_suppresses_hover;
 
 /** Mouse modes. */
 enum SpecialMouseMode : uint8_t {

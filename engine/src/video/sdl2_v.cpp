@@ -45,6 +45,7 @@ static bool _openttdpad_added_background_pause = false;
 static bool _openttdpad_is_background = false;
 static bool _openttdpad_momentum_active = false;
 static OpenTTDPad::Touch::TouchPoint _openttdpad_momentum_velocity{};
+static OpenTTDPad::Touch::TouchPoint _openttdpad_pan_remainder{};
 static uint32_t _openttdpad_momentum_last_tick = 0;
 static uint64_t _openttdpad_touch_settings_generation = 0;
 static void OpenTTDPadStopMomentum();
@@ -76,6 +77,26 @@ static void OpenTTDPadInputProbe(const char *kind, int64_t source, double x, dou
 {
 	fmt::print(stderr, "OpenTTDPad input: {} source={} x={:.3f} y={:.3f}\n", kind, source, x, y);
 	fflush(stderr);
+}
+
+static void OpenTTDPadPositionTouchCursor(Point point)
+{
+	UndrawMouseCursor();
+	_cursor.in_window = true;
+	_cursor.fix_at = false;
+	_cursor.UpdateCursorPosition(point.x, point.y);
+	_cursor.delta = {};
+	_cursor.dirty = true;
+}
+
+static void OpenTTDPadBeginTouchInput(Point point)
+{
+	/* Keep direct-touch location visible, but never turn it into desktop
+	 * hover state. A genuine pointer motion restores normal hover behavior. */
+	CloseWindowById(WC_TOOLTIPS, 0);
+	_touch_cursor_suppresses_hover = true;
+	_mouse_hovering = false;
+	OpenTTDPadPositionTouchCursor(point);
 }
 
 static Point OpenTTDPadTouchPoint(const SDL_TouchFingerEvent &event)
@@ -200,6 +221,26 @@ static void OpenTTDPadStopMomentum()
 	_openttdpad_momentum_last_tick = 0;
 }
 
+static void OpenTTDPadScrollViewport(OpenTTDPad::Touch::TouchPoint delta)
+{
+	/* SDL reports each finger independently. Preserve fractional centroid
+	 * movement across those events and scroll the viewport directly instead
+	 * of routing a two-finger gesture through desktop right-mouse dragging. */
+	_openttdpad_pan_remainder.x -= delta.x;
+	_openttdpad_pan_remainder.y -= delta.y;
+	Point whole{
+		static_cast<int>(std::trunc(_openttdpad_pan_remainder.x)),
+		static_cast<int>(std::trunc(_openttdpad_pan_remainder.y)),
+	};
+	_openttdpad_pan_remainder.x -= whole.x;
+	_openttdpad_pan_remainder.y -= whole.y;
+	Window *window = GetMainWindow();
+	if (window != nullptr && window->viewport != nullptr && (whole.x != 0 || whole.y != 0)) {
+		window->viewport->follow_vehicle = VehicleID::Invalid();
+		window->OnScroll(whole);
+	}
+}
+
 static bool OpenTTDPadAdvanceMomentum(uint32_t timestamp_ms)
 {
 	if (!_openttdpad_momentum_active || _openttdpad_momentum_last_tick == 0) return false;
@@ -254,21 +295,13 @@ static void OpenTTDPadApplyTouchActions(const std::vector<OpenTTDPad::Touch::Act
 				break;
 			case ActionType::PanBegin:
 				OpenTTDPadStopMomentum();
-				/* Enter viewport scrolling without dispatching a right click.
-				 * PanMove will preserve the first deliberate drag delta. */
-				_cursor.UpdateCursorPosition(point.x, point.y);
-				_right_button_down = true;
-				_right_button_clicked = false;
-				_scrolling_viewport = true;
-				_cursor.fix_at = false;
+				_openttdpad_pan_remainder = {};
 				break;
 			case ActionType::PanMove:
-				OpenTTDPadMoveCursor(point);
+				OpenTTDPadScrollViewport(action.delta);
 				break;
 			case ActionType::PanEnd:
-				OpenTTDPadMoveCursor(point);
-				_right_button_down = false;
-				HandleMouseEvents();
+				_openttdpad_pan_remainder = {};
 				if (std::hypot(action.delta.x, action.delta.y) >=
 						_openttdpad_gestures.GetSettings().momentum_min_velocity) {
 					_openttdpad_momentum_active = true;
@@ -324,6 +357,7 @@ static void OpenTTDPadApplyTouchActions(const std::vector<OpenTTDPad::Touch::Act
 				_left_button_clicked = false;
 				_scrolling_viewport = false;
 				_cursor.fix_at = false;
+				_openttdpad_pan_remainder = {};
 				break;
 		}
 	}
@@ -725,6 +759,7 @@ bool VideoDriver_SDL_Base::PollEvent()
 			Point point = OpenTTDPadTouchPoint(ev.tfinger);
 			std::vector<OpenTTDPad::Touch::Action> actions;
 			if (ev.type == SDL_FINGERDOWN) {
+				if (_openttdpad_gestures.FingerCount() == 0) OpenTTDPadBeginTouchInput(point);
 				OpenTTDPadStopMomentum();
 				OpenTTDPadInputProbe("finger-down", ev.tfinger.touchId, ev.tfinger.x, ev.tfinger.y);
 				if (!OpenTTDPadTouchIsInRejectedEdge(point)) {
@@ -734,10 +769,22 @@ bool VideoDriver_SDL_Base::PollEvent()
 				}
 			} else if (ev.type == SDL_FINGERMOTION) {
 				OpenTTDPadInputProbe("finger-move", ev.tfinger.touchId, ev.tfinger.x, ev.tfinger.y);
+				const auto state = _openttdpad_gestures.GetState();
+				if (_openttdpad_gestures.FingerCount() == 1 &&
+						(state == OpenTTDPad::Touch::State::Pending ||
+						 state == OpenTTDPad::Touch::State::OneFingerSuppressed)) {
+					OpenTTDPadPositionTouchCursor(point);
+				}
 				actions = _openttdpad_gestures.FingerMove(ev.tfinger.fingerId,
 					{static_cast<double>(point.x), static_cast<double>(point.y)}, ev.tfinger.timestamp);
 			} else {
 				OpenTTDPadInputProbe("finger-up", ev.tfinger.touchId, ev.tfinger.x, ev.tfinger.y);
+				const auto state = _openttdpad_gestures.GetState();
+				if (_openttdpad_gestures.FingerCount() == 1 &&
+						(state == OpenTTDPad::Touch::State::Pending ||
+						 state == OpenTTDPad::Touch::State::OneFingerSuppressed)) {
+					OpenTTDPadPositionTouchCursor(point);
+				}
 				actions = _openttdpad_gestures.FingerUp(ev.tfinger.fingerId,
 					{static_cast<double>(point.x), static_cast<double>(point.y)}, ev.tfinger.timestamp);
 			}
@@ -749,6 +796,8 @@ bool VideoDriver_SDL_Base::PollEvent()
 		case SDL_MOUSEMOTION: {
 #ifdef OPENTTDPAD_IOS
 			OpenTTDPadInputProbe("mouse-move", ev.motion.which, ev.motion.x, ev.motion.y);
+			_touch_cursor_suppresses_hover = false;
+			_cursor.in_window = true;
 #endif
 			int32_t x = ev.motion.x;
 			int32_t y = ev.motion.y;
@@ -854,15 +903,24 @@ bool VideoDriver_SDL_Base::PollEvent()
 			break;
 
 		case SDL_APP_WILLENTERFOREGROUND:
-		case SDL_APP_DIDENTERFOREGROUND:
+			/* UIKit has not restored the drawable yet. Wait for the completed
+			 * foreground transition before reacquiring SDL's window surface. */
+			break;
+
+		case SDL_APP_DIDENTERFOREGROUND: {
 			if (!_openttdpad_is_background) break;
 			_openttdpad_is_background = false;
 			if (_openttdpad_added_background_pause) {
 				_pause_mode.Reset(PauseMode::Normal);
 				_openttdpad_added_background_pause = false;
 			}
+			int width;
+			int height;
+			SDL_GetWindowSize(this->sdl_window, &width, &height);
+			this->ClientSizeChanged(std::max(width, 64), std::max(height, 64), true);
 			this->MakeDirty(0, 0, _screen.width, _screen.height);
 			break;
+		}
 #endif
 
 		case SDL_KEYDOWN: // Toggle full-screen on ALT + ENTER/F

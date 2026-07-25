@@ -132,6 +132,7 @@ void GestureState::ResetActiveGesture()
 	this->pinch_reference_distance = 0;
 	this->pan_velocity = {};
 	this->last_pan_move_ms = 0;
+	this->two_finger_contact_ms = 0;
 }
 
 std::vector<Action> GestureState::EmitTap(TouchPoint position, uint32_t timestamp_ms)
@@ -166,6 +167,7 @@ std::vector<Action> GestureState::FingerDown(int64_t id, TouchPoint position, ui
 		this->state = State::TwoFingerPending;
 		this->two_finger_tap_possible = false;
 		this->two_finger_start_ms = timestamp_ms;
+		this->two_finger_contact_ms = timestamp_ms;
 		this->initial_pinch_distance = this->pinch_reference_distance = this->FingerDistance();
 		this->initial_centroid = this->last_centroid = this->Centroid();
 		return {{ActionType::Cancel, position}};
@@ -176,6 +178,7 @@ std::vector<Action> GestureState::FingerDown(int64_t id, TouchPoint position, ui
 		this->state = State::TwoFingerPending;
 		this->two_finger_tap_possible = false;
 		this->two_finger_start_ms = timestamp_ms;
+		this->two_finger_contact_ms = timestamp_ms;
 		this->initial_pinch_distance = this->pinch_reference_distance = this->FingerDistance();
 		this->initial_centroid = this->last_centroid = this->Centroid();
 		return result;
@@ -185,6 +188,7 @@ std::vector<Action> GestureState::FingerDown(int64_t id, TouchPoint position, ui
 	this->state = State::TwoFingerPending;
 	this->two_finger_tap_possible = timestamp_ms - first_down_ms <= this->settings.two_tap_stagger_ms;
 	this->two_finger_start_ms = first_down_ms;
+	this->two_finger_contact_ms = timestamp_ms;
 	this->initial_pinch_distance = this->pinch_reference_distance = this->FingerDistance();
 	this->initial_centroid = this->last_centroid = this->Centroid();
 	return {};
@@ -204,23 +208,40 @@ std::vector<Action> GestureState::FingerMove(int64_t id, TouchPoint position, ui
 			return {{ActionType::DirectDragBegin, finger->start}, {ActionType::DirectDragMove, finger->current,
 				{finger->current.x - finger->start.x, finger->current.y - finger->start.y}}};
 		}
-		this->state = State::Panning;
-		this->last_centroid = finger->current;
-		this->last_pan_move_ms = timestamp_ms;
-		return {{ActionType::PanBegin, finger->start}, {ActionType::PanMove, finger->current,
-			{finger->current.x - finger->start.x, finger->current.y - finger->start.y}}};
+		this->state = State::OneFingerSuppressed;
+		return {};
 	}
+
+	if (this->state == State::OneFingerSuppressed) return {};
 
 	if (this->state == State::TwoFingerPending) {
 		const double distance = this->FingerDistance();
 		const TouchPoint centroid = this->Centroid();
-		if (std::abs(distance - this->initial_pinch_distance) > this->settings.pinch_activate) {
+		const double separation_movement = std::abs(distance - this->initial_pinch_distance);
+		const double centroid_movement = Distance(centroid, this->initial_centroid);
+		const bool both_fingers_moved = std::ranges::all_of(this->fingers, [this](const Finger &candidate) {
+			return !candidate.active || Distance(candidate.start, candidate.current) >= this->settings.tap_slop;
+		});
+		/* SDL delivers the fingers one at a time. Give the second contact a
+		 * moment to move before deciding that temporary spacing is a pinch. */
+		if (!both_fingers_moved && timestamp_ms - this->two_finger_contact_ms < 90) return {};
+
+		if (separation_movement > this->settings.pinch_activate && separation_movement > centroid_movement) {
 			this->state = State::Pinching;
-			this->pinch_reference_distance = distance;
 			this->two_finger_tap_possible = false;
-			return {};
+			this->last_centroid = centroid;
+			std::vector<Action> actions;
+			while (distance >= this->pinch_reference_distance * this->settings.pinch_step_factor) {
+				this->pinch_reference_distance *= this->settings.pinch_step_factor;
+				actions.push_back({ActionType::ZoomIn, centroid});
+			}
+			while (distance <= this->pinch_reference_distance / this->settings.pinch_step_factor) {
+				this->pinch_reference_distance /= this->settings.pinch_step_factor;
+				actions.push_back({ActionType::ZoomOut, centroid});
+			}
+			return actions;
 		}
-		if (Distance(centroid, this->initial_centroid) > this->settings.drag_activate) {
+		if (centroid_movement > this->settings.drag_activate) {
 			this->state = State::Panning;
 			this->two_finger_tap_possible = false;
 			TouchPoint delta{centroid.x - this->initial_centroid.x, centroid.y - this->initial_centroid.y};
@@ -244,15 +265,16 @@ std::vector<Action> GestureState::FingerMove(int64_t id, TouchPoint position, ui
 	if (this->state == State::Pinching) {
 		const double distance = this->FingerDistance();
 		const TouchPoint centroid = this->Centroid();
-		if (distance >= this->pinch_reference_distance * this->settings.pinch_step_factor) {
-			this->pinch_reference_distance = distance;
-			return {{ActionType::ZoomIn, centroid}};
+		std::vector<Action> actions;
+		while (distance >= this->pinch_reference_distance * this->settings.pinch_step_factor) {
+			this->pinch_reference_distance *= this->settings.pinch_step_factor;
+			actions.push_back({ActionType::ZoomIn, centroid});
 		}
-		if (distance <= this->pinch_reference_distance / this->settings.pinch_step_factor) {
-			this->pinch_reference_distance = distance;
-			return {{ActionType::ZoomOut, centroid}};
+		while (distance <= this->pinch_reference_distance / this->settings.pinch_step_factor) {
+			this->pinch_reference_distance /= this->settings.pinch_step_factor;
+			actions.push_back({ActionType::ZoomOut, centroid});
 		}
-		return {};
+		return actions;
 	}
 
 	if (this->state == State::Precision) {
@@ -283,6 +305,11 @@ std::vector<Action> GestureState::FingerUp(int64_t id, TouchPoint position, uint
 		return {};
 	}
 
+	if (ending_state == State::OneFingerSuppressed) {
+		this->ResetActiveGesture();
+		return {};
+	}
+
 	if (ending_state == State::DirectDragging) {
 		this->ResetActiveGesture();
 		return {{ActionType::DirectDragEnd, position}};
@@ -304,11 +331,11 @@ std::vector<Action> GestureState::FingerUp(int64_t id, TouchPoint position, uint
 	}
 
 	if ((ending_state == State::Panning || ending_state == State::Pinching) && this->FingerCount() == 1) {
-		this->state = State::Panning;
-		this->last_centroid = this->Centroid();
+		TouchPoint velocity = ending_state == State::Panning ? this->EndPan(timestamp_ms) : TouchPoint{};
+		this->state = State::OneFingerSuppressed;
 		this->pan_velocity = {};
-		this->last_pan_move_ms = timestamp_ms;
-		return {{ActionType::PanBegin, this->last_centroid}};
+		this->last_pan_move_ms = 0;
+		return {{ActionType::PanEnd, position, velocity}};
 	}
 
 	if ((ending_state == State::Panning || ending_state == State::Pinching) && this->FingerCount() == 0) {

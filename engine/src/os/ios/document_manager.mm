@@ -43,25 +43,25 @@ static UIWindow *OpenTTDPadVisibleWindow()
 	return nil;
 }
 
-static CGFloat OpenTTDPadOverlayScale(UIWindow *window)
+static CGFloat OpenTTDPadOverlayCoordinateScale(UIWindow *window)
 {
 	if (window == nil || window.screen == nil) return 1.0;
-	const CGSize window_size = window.bounds.size;
-	const CGSize screen_size = window.screen.bounds.size;
-	const CGFloat window_long_edge = std::max(window_size.width, window_size.height);
-	const CGFloat screen_long_edge = std::max(screen_size.width, screen_size.height);
-	const CGFloat coordinate_scale = screen_long_edge > 0 ? window_long_edge / screen_long_edge : 1.0;
-	return std::clamp(std::max(coordinate_scale, window.screen.scale), 1.0, 3.0);
+	const CGFloat window_long_edge = std::max(window.bounds.size.width, window.bounds.size.height);
+	const CGFloat screen_long_edge = std::max(window.screen.bounds.size.width, window.screen.bounds.size.height);
+	return screen_long_edge > 0 ? window_long_edge / screen_long_edge : 1.0;
 }
 
 static void OpenTTDPadPositionOptionsButton(UIWindow *window)
 {
 	if (window == nil || OpenTTDPadOptionsButton == nil) return;
 	const UIEdgeInsets safe = window.safeAreaInsets;
-	const CGFloat scale = OpenTTDPadOverlayScale(window);
-	const CGFloat x = OpenTTDPadControlsLeftHanded() ? safe.left + 34.0 * scale :
-		CGRectGetWidth(window.bounds) - safe.right - 34.0 * scale;
-	OpenTTDPadOptionsButton.center = CGPointMake(x, CGRectGetMidY(window.bounds));
+	const CGFloat scale = OpenTTDPadOverlayCoordinateScale(window);
+	const CGFloat x = OpenTTDPadControlsLeftHanded() ? safe.left + 30.0 * scale :
+		CGRectGetWidth(window.bounds) - safe.right - 30.0 * scale;
+	/* Stay in the lower thumb corner without entering iPadOS's Dock and
+	 * bottom-corner gesture interception zone after app reactivation. */
+	const CGFloat y = CGRectGetHeight(window.bounds) - safe.bottom - 72.0 * scale;
+	OpenTTDPadOptionsButton.center = CGPointMake(x, y);
 }
 
 static UIViewController *OpenTTDPadPresenter()
@@ -69,6 +69,17 @@ static UIViewController *OpenTTDPadPresenter()
 	UIViewController *controller = OpenTTDPadVisibleWindow().rootViewController;
 	while (controller.presentedViewController != nil) controller = controller.presentedViewController;
 	return controller;
+}
+
+static void OpenTTDPadAnchorPopover(UIViewController *controller)
+{
+	UIPopoverPresentationController *popover = controller.popoverPresentationController;
+	if (popover == nil || OpenTTDPadOptionsButton == nil) return;
+	popover.sourceView = OpenTTDPadOptionsButton;
+	popover.sourceRect = OpenTTDPadOptionsButton.bounds;
+	/* The persistent control lives at the bottom edge, so keep every menu
+	 * above it and inside the landscape game window. */
+	popover.permittedArrowDirections = UIPopoverArrowDirectionDown;
 }
 
 static void OpenTTDPadPresentMessage(NSString *title, NSString *message)
@@ -226,15 +237,86 @@ static NSURL *OpenTTDPadCreateSaveArchive(NSError **output_error, NSUInteger *ou
 	return [archive writeToURL:destination options:NSDataWritingAtomic error:output_error] ? destination : nil;
 }
 
+static NSAttributedString *OpenTTDPadFormattedNotices(NSString *markdown)
+{
+	NSMutableAttributedString *result = [[[NSMutableAttributedString alloc] init] autorelease];
+	NSDictionary *intro = @{NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleBody],
+		NSForegroundColorAttributeName: UIColor.labelColor};
+	NSDictionary *heading = @{NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline],
+		NSForegroundColorAttributeName: UIColor.labelColor};
+	NSDictionary *detail = @{NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline],
+		NSForegroundColorAttributeName: UIColor.secondaryLabelColor};
+	NSDictionary *footnote = @{NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote],
+		NSForegroundColorAttributeName: UIColor.secondaryLabelColor};
+	[result appendAttributedString:[[[NSAttributedString alloc]
+		initWithString:@"OpenTTDPad is an independent iPad port based on OpenTTD 15.3.\n\nIncluded components\n\n"
+		attributes:intro] autorelease]];
+
+	NSCharacterSet *spaces = NSCharacterSet.whitespaceAndNewlineCharacterSet;
+	for (NSString *line in [markdown componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet]) {
+		if (![line hasPrefix:@"|"]) continue;
+		NSArray<NSString *> *cells = [line componentsSeparatedByString:@"|"];
+		if (cells.count < 6) continue;
+		NSString *component = [cells[1] stringByTrimmingCharactersInSet:spaces];
+		if ([component isEqualToString:@"Component"] || [component hasPrefix:@"---"]) continue;
+		NSString *version = [[cells[2] stringByTrimmingCharactersInSet:spaces]
+			stringByReplacingOccurrencesOfString:@"`" withString:@""];
+		NSString *role = [[cells[3] stringByTrimmingCharactersInSet:spaces]
+			stringByReplacingOccurrencesOfString:@"`" withString:@""];
+		NSString *license = [[cells[4] stringByTrimmingCharactersInSet:spaces]
+			stringByReplacingOccurrencesOfString:@"`" withString:@""];
+		[result appendAttributedString:[[[NSAttributedString alloc]
+			initWithString:[NSString stringWithFormat:@"%@ %@\n", component, version] attributes:heading] autorelease]];
+		[result appendAttributedString:[[[NSAttributedString alloc]
+			initWithString:[NSString stringWithFormat:@"%@\nLicense: %@\n\n", role, license] attributes:detail] autorelease]];
+	}
+	[result appendAttributedString:[[[NSAttributedString alloc] initWithString:
+		@"Exact license texts and corresponding source references are included in the app bundle. OpenTTDPad is not an official OpenTTD project or release."
+		attributes:footnote] autorelease]];
+	return result;
+}
+
+static NSAttributedString *OpenTTDPadFormattedMarkdown(NSString *markdown)
+{
+	NSAttributedStringMarkdownParsingOptions *options = [[[NSAttributedStringMarkdownParsingOptions alloc] init] autorelease];
+	options.interpretedSyntax = NSAttributedStringMarkdownInterpretedSyntaxFull;
+	NSAttributedString *parsed = [[[NSAttributedString alloc] initWithMarkdownString:markdown
+		options:options baseURL:nil error:nil] autorelease];
+	if (parsed == nil) {
+		return [[[NSAttributedString alloc] initWithString:markdown attributes:@{
+			NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleBody],
+			NSForegroundColorAttributeName: UIColor.labelColor,
+		}] autorelease];
+	}
+
+	NSMutableAttributedString *styled = [[parsed mutableCopy] autorelease];
+	const NSRange full_range = NSMakeRange(0, styled.length);
+	[styled addAttribute:NSForegroundColorAttributeName value:UIColor.labelColor range:full_range];
+	[styled enumerateAttribute:NSFontAttributeName inRange:full_range options:0
+		usingBlock:^(id value, NSRange range, __unused BOOL *stop) {
+			if (value == nil) {
+				[styled addAttribute:NSFontAttributeName
+					value:[UIFont preferredFontForTextStyle:UIFontTextStyleBody] range:range];
+			}
+		}];
+	return styled;
+}
+
 @interface OpenTTDPadDocumentManager : NSObject <UIDocumentPickerDelegate>
 + (instancetype)shared;
 - (void)showOptions;
 - (void)showImport;
 - (void)showExport;
 - (void)showTouchSettings;
-- (void)showLayoutAndFeedbackSettings;
 - (void)showNotices;
 - (void)dismissPresented;
+- (void)responseChanged:(UISegmentedControl *)sender;
+- (void)holdChanged:(UISegmentedControl *)sender;
+- (void)expandedTargetsChanged:(UISwitch *)sender;
+- (void)momentumChanged:(UISwitch *)sender;
+- (void)controlsSideChanged:(UISegmentedControl *)sender;
+- (void)hapticsChanged:(UISwitch *)sender;
+- (void)resetTouchTips;
 @end
 
 @implementation OpenTTDPadDocumentManager
@@ -251,6 +333,10 @@ static NSURL *OpenTTDPadCreateSaveArchive(NSError **output_error, NSUInteger *ou
 {
 	UIViewController *presenter = OpenTTDPadPresenter();
 	if (presenter == nil) return;
+	if ([presenter isKindOfClass:UIAlertController.class] && [presenter.title isEqualToString:@"OpenTTDPad"]) {
+		[presenter dismissViewControllerAnimated:YES completion:nil];
+		return;
+	}
 	OpenTTDPadOptionsButton.accessibilityLabel = @"OpenTTDPad options";
 	UIAlertController *menu = [UIAlertController alertControllerWithTitle:@"OpenTTDPad"
 		message:@"Files, touch controls, and project information" preferredStyle:UIAlertControllerStyleActionSheet];
@@ -263,8 +349,8 @@ static NSURL *OpenTTDPadCreateSaveArchive(NSError **output_error, NSUInteger *ou
 	[menu addAction:[UIAlertAction actionWithTitle:@"Licenses & Credits" style:UIAlertActionStyleDefault
 		handler:^(__unused UIAlertAction *action) { [self showNotices]; }]];
 	[menu addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-	menu.popoverPresentationController.sourceView = OpenTTDPadOptionsButton;
-	menu.popoverPresentationController.sourceRect = OpenTTDPadOptionsButton.bounds;
+	OpenTTDPadAnchorPopover(menu);
+	menu.popoverPresentationController.passthroughViews = @[OpenTTDPadOptionsButton];
 	[presenter presentViewController:menu animated:YES completion:nil];
 }
 
@@ -295,56 +381,18 @@ static NSURL *OpenTTDPadCreateSaveArchive(NSError **output_error, NSUInteger *ou
 				@"Create or import a save before exporting.");
 			return;
 		}
-			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 350 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
-				UIActivityViewController *share = [[UIActivityViewController alloc] initWithActivityItems:@[archive]
-					applicationActivities:nil];
-				OpenTTDPadOptionsButton.accessibilityLabel = [NSString stringWithFormat:@"OpenTTDPad options, %lu saves ready to share",
-					(unsigned long)count];
-				UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification,
-					[NSString stringWithFormat:@"Save archive ready with %lu saves", (unsigned long)count]);
-				share.popoverPresentationController.sourceView = OpenTTDPadOptionsButton;
-				share.popoverPresentationController.sourceRect = OpenTTDPadOptionsButton.bounds;
-				[OpenTTDPadPresenter() presentViewController:share animated:YES completion:nil];
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 350 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+			UIActivityViewController *share = [[UIActivityViewController alloc] initWithActivityItems:@[archive]
+				applicationActivities:nil];
+			OpenTTDPadOptionsButton.accessibilityLabel = [NSString stringWithFormat:@"OpenTTDPad options, %lu saves ready to share",
+				(unsigned long)count];
+			UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification,
+				[NSString stringWithFormat:@"Save archive ready with %lu saves", (unsigned long)count]);
+			OpenTTDPadAnchorPopover(share);
+			[OpenTTDPadPresenter() presentViewController:share animated:YES completion:nil];
 			[share release];
 		});
 	});
-}
-
-- (void)showResponseChoices
-{
-	UIAlertController *choices = [UIAlertController alertControllerWithTitle:@"Gesture Response" message:nil
-		preferredStyle:UIAlertControllerStyleActionSheet];
-	NSArray<NSString *> *names = @[@"Relaxed", @"Balanced", @"Responsive"];
-	for (NSInteger index = 0; index < (NSInteger)names.count; index++) {
-		[choices addAction:[UIAlertAction actionWithTitle:names[index] style:UIAlertActionStyleDefault
-			handler:^(__unused UIAlertAction *action) {
-				[[NSUserDefaults standardUserDefaults] setInteger:index forKey:@"OpenTTDPadGestureResponse"];
-				OpenTTDPadSettingsGeneration++;
-				[self showTouchSettings];
-			}]];
-	}
-	choices.popoverPresentationController.sourceView = OpenTTDPadOptionsButton;
-	choices.popoverPresentationController.sourceRect = OpenTTDPadOptionsButton.bounds;
-	[OpenTTDPadPresenter() presentViewController:choices animated:YES completion:nil];
-}
-
-- (void)showHoldChoices
-{
-	UIAlertController *choices = [UIAlertController alertControllerWithTitle:@"Precision Hold" message:nil
-		preferredStyle:UIAlertControllerStyleActionSheet];
-	NSArray<NSNumber *> *values = @[@350, @500, @700];
-	NSArray<NSString *> *names = @[@"Quick · 0.35 seconds", @"Balanced · 0.50 seconds", @"Deliberate · 0.70 seconds"];
-	for (NSInteger index = 0; index < (NSInteger)names.count; index++) {
-		[choices addAction:[UIAlertAction actionWithTitle:names[index] style:UIAlertActionStyleDefault
-			handler:^(__unused UIAlertAction *action) {
-				[[NSUserDefaults standardUserDefaults] setInteger:values[index].integerValue forKey:@"OpenTTDPadLongPressMS"];
-				OpenTTDPadSettingsGeneration++;
-				[self showTouchSettings];
-			}]];
-	}
-	choices.popoverPresentationController.sourceView = OpenTTDPadOptionsButton;
-	choices.popoverPresentationController.sourceRect = OpenTTDPadOptionsButton.bounds;
-	[OpenTTDPadPresenter() presentViewController:choices animated:YES completion:nil];
 }
 
 - (void)showTouchSettings
@@ -353,72 +401,161 @@ static NSURL *OpenTTDPadCreateSaveArchive(NSError **output_error, NSUInteger *ou
 	[defaults registerDefaults:@{@"OpenTTDPadGestureResponse": @1, @"OpenTTDPadLongPressMS": @500,
 		@"OpenTTDPadExpandedTargets": @YES, @"OpenTTDPadMomentum": @YES,
 		@"OpenTTDPadControlsLeftHanded": @NO, @"OpenTTDPadHaptics": @YES}];
-	NSArray<NSString *> *responses = @[@"Relaxed", @"Balanced", @"Responsive"];
-	NSInteger response = std::clamp<NSInteger>([defaults integerForKey:@"OpenTTDPadGestureResponse"], 0, 2);
-	UIAlertController *settings = [UIAlertController alertControllerWithTitle:@"Touch Controls"
-		message:@"Interface and font scale remain independent in OpenTTD's Game Options. Pinch changes only the map zoom."
-		preferredStyle:UIAlertControllerStyleActionSheet];
-	[settings addAction:[UIAlertAction actionWithTitle:[NSString stringWithFormat:@"Gesture response: %@", responses[response]]
-		style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) { [self showResponseChoices]; }]];
-	[settings addAction:[UIAlertAction actionWithTitle:[NSString stringWithFormat:@"Precision hold: %.2f seconds",
-		[defaults integerForKey:@"OpenTTDPadLongPressMS"] / 1000.0] style:UIAlertActionStyleDefault
-		handler:^(__unused UIAlertAction *action) { [self showHoldChoices]; }]];
-	BOOL expanded = [defaults boolForKey:@"OpenTTDPadExpandedTargets"];
-	[settings addAction:[UIAlertAction actionWithTitle:[NSString stringWithFormat:@"Enlarged controls: %@", expanded ? @"On" : @"Off"]
-		style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
-			[defaults setBool:!expanded forKey:@"OpenTTDPadExpandedTargets"];
-			OpenTTDPadSettingsGeneration++;
-			[self showTouchSettings];
-		}]];
-	BOOL momentum = [defaults boolForKey:@"OpenTTDPadMomentum"];
-	[settings addAction:[UIAlertAction actionWithTitle:[NSString stringWithFormat:@"Map momentum: %@", momentum ? @"On" : @"Off"]
-		style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
-			[defaults setBool:!momentum forKey:@"OpenTTDPadMomentum"];
-			OpenTTDPadSettingsGeneration++;
-			[self showTouchSettings];
-		}]];
-	[settings addAction:[UIAlertAction actionWithTitle:@"Layout & Feedback" style:UIAlertActionStyleDefault
-		handler:^(__unused UIAlertAction *action) { [self showLayoutAndFeedbackSettings]; }]];
-	[settings addAction:[UIAlertAction actionWithTitle:@"Show Touch Tips Again" style:UIAlertActionStyleDefault
-		handler:^(__unused UIAlertAction *action) {
-			[defaults setBool:NO forKey:@"OpenTTDPadTouchHintSeen"];
-			[defaults setBool:NO forKey:@"OpenTTDPadToolHintSeen"];
-			OpenTTDPadPresentMessage(@"Touch Tips Reset", @"The touch coach will appear the next time the app starts a game.");
-		}]];
-	/* Cancel actions are omitted from iPad action-sheet popovers. Keep Done as
-	 * an explicit action so touch users always have a deterministic exit. */
-	[settings addAction:[UIAlertAction actionWithTitle:@"Done" style:UIAlertActionStyleDefault handler:nil]];
-	settings.popoverPresentationController.sourceView = OpenTTDPadOptionsButton;
-	settings.popoverPresentationController.sourceRect = OpenTTDPadOptionsButton.bounds;
-	[OpenTTDPadPresenter() presentViewController:settings animated:YES completion:nil];
+	UIViewController *controller = [[UIViewController alloc] init];
+	controller.title = @"Touch Controls";
+	controller.view.backgroundColor = UIColor.systemGroupedBackgroundColor;
+	controller.preferredContentSize = CGSizeMake(520, 570);
+
+	UIScrollView *scroll = [[UIScrollView alloc] initWithFrame:CGRectZero];
+	scroll.translatesAutoresizingMaskIntoConstraints = NO;
+	UIStackView *stack = [[UIStackView alloc] initWithFrame:CGRectZero];
+	stack.translatesAutoresizingMaskIntoConstraints = NO;
+	stack.axis = UILayoutConstraintAxisVertical;
+	stack.spacing = 10;
+	[scroll addSubview:stack];
+	[controller.view addSubview:scroll];
+
+	void (^addSection)(NSString *) = ^(NSString *title) {
+		UILabel *label = [[[UILabel alloc] initWithFrame:CGRectZero] autorelease];
+		label.text = title.uppercaseString;
+		label.textColor = UIColor.secondaryLabelColor;
+		label.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
+		[stack addArrangedSubview:label];
+	};
+	void (^addRow)(NSString *, UIView *) = ^(NSString *title, UIView *control) {
+		UIStackView *row = [[[UIStackView alloc] initWithFrame:CGRectZero] autorelease];
+		row.axis = UILayoutConstraintAxisHorizontal;
+		row.alignment = UIStackViewAlignmentCenter;
+		row.spacing = 14;
+		row.layoutMargins = UIEdgeInsetsMake(10, 14, 10, 14);
+		row.layoutMarginsRelativeArrangement = YES;
+		row.backgroundColor = UIColor.secondarySystemGroupedBackgroundColor;
+		row.layer.cornerRadius = 12;
+		UILabel *label = [[[UILabel alloc] initWithFrame:CGRectZero] autorelease];
+		label.text = title;
+		label.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+		[label setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+		[row addArrangedSubview:label];
+		[row addArrangedSubview:control];
+		[[row.heightAnchor constraintGreaterThanOrEqualToConstant:52] setActive:YES];
+		[stack addArrangedSubview:row];
+	};
+
+	UILabel *explanation = [[[UILabel alloc] initWithFrame:CGRectZero] autorelease];
+	explanation.text = @"One finger taps and builds. Two fingers move and zoom the map.";
+	explanation.numberOfLines = 0;
+	explanation.textColor = UIColor.secondaryLabelColor;
+	explanation.font = [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
+	[stack addArrangedSubview:explanation];
+
+	addSection(@"Gestures");
+	UISegmentedControl *response = [[[UISegmentedControl alloc] initWithItems:@[@"Relaxed", @"Balanced", @"Quick"]] autorelease];
+	response.selectedSegmentIndex = std::clamp<NSInteger>([defaults integerForKey:@"OpenTTDPadGestureResponse"], 0, 2);
+	response.accessibilityLabel = @"Gesture response";
+	[response addTarget:self action:@selector(responseChanged:) forControlEvents:UIControlEventValueChanged];
+	addRow(@"Response", response);
+
+	UISegmentedControl *hold = [[[UISegmentedControl alloc] initWithItems:@[@"0.35s", @"0.50s", @"0.70s"]] autorelease];
+	const NSInteger hold_ms = [defaults integerForKey:@"OpenTTDPadLongPressMS"];
+	hold.selectedSegmentIndex = hold_ms <= 350 ? 0 : hold_ms >= 700 ? 2 : 1;
+	hold.accessibilityLabel = @"Precision hold";
+	[hold addTarget:self action:@selector(holdChanged:) forControlEvents:UIControlEventValueChanged];
+	addRow(@"Precision hold", hold);
+
+	UISwitch *momentum = [[[UISwitch alloc] initWithFrame:CGRectZero] autorelease];
+	momentum.on = [defaults boolForKey:@"OpenTTDPadMomentum"];
+	momentum.accessibilityLabel = @"Map glide";
+	[momentum addTarget:self action:@selector(momentumChanged:) forControlEvents:UIControlEventValueChanged];
+	addRow(@"Glide after pan", momentum);
+
+	addSection(@"Interface");
+	UISwitch *expanded = [[[UISwitch alloc] initWithFrame:CGRectZero] autorelease];
+	expanded.on = [defaults boolForKey:@"OpenTTDPadExpandedTargets"];
+	expanded.accessibilityLabel = @"Enlarged controls";
+	[expanded addTarget:self action:@selector(expandedTargetsChanged:) forControlEvents:UIControlEventValueChanged];
+	addRow(@"Larger tap targets", expanded);
+
+	UISegmentedControl *side = [[[UISegmentedControl alloc] initWithItems:@[@"Left", @"Right"]] autorelease];
+	side.selectedSegmentIndex = [defaults boolForKey:@"OpenTTDPadControlsLeftHanded"] ? 0 : 1;
+	side.accessibilityLabel = @"Controls side";
+	[side addTarget:self action:@selector(controlsSideChanged:) forControlEvents:UIControlEventValueChanged];
+	addRow(@"Controls side", side);
+
+	UISwitch *haptics = [[[UISwitch alloc] initWithFrame:CGRectZero] autorelease];
+	haptics.on = [defaults boolForKey:@"OpenTTDPadHaptics"];
+	haptics.accessibilityLabel = @"Haptics";
+	[haptics addTarget:self action:@selector(hapticsChanged:) forControlEvents:UIControlEventValueChanged];
+	addRow(@"Haptic feedback", haptics);
+
+	UIButton *tips = [UIButton buttonWithType:UIButtonTypeSystem];
+	[tips setTitle:@"Show Touch Tips Again" forState:UIControlStateNormal];
+	tips.titleLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+	[tips addTarget:self action:@selector(resetTouchTips) forControlEvents:UIControlEventTouchUpInside];
+	addRow(@"Help", tips);
+
+	[NSLayoutConstraint activateConstraints:@[
+		[scroll.leadingAnchor constraintEqualToAnchor:controller.view.safeAreaLayoutGuide.leadingAnchor],
+		[scroll.trailingAnchor constraintEqualToAnchor:controller.view.safeAreaLayoutGuide.trailingAnchor],
+		[scroll.topAnchor constraintEqualToAnchor:controller.view.safeAreaLayoutGuide.topAnchor],
+		[scroll.bottomAnchor constraintEqualToAnchor:controller.view.safeAreaLayoutGuide.bottomAnchor],
+		[stack.leadingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.leadingAnchor constant:20],
+		[stack.trailingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.trailingAnchor constant:-20],
+		[stack.topAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.topAnchor constant:16],
+		[stack.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor constant:-20],
+		[stack.widthAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.widthAnchor constant:-40],
+	]];
+	controller.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone
+		target:self action:@selector(dismissPresented)];
+	UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:controller];
+	navigation.modalPresentationStyle = UIModalPresentationFormSheet;
+	[OpenTTDPadPresenter() presentViewController:navigation animated:YES completion:nil];
+	[scroll release]; [stack release]; [controller.navigationItem.rightBarButtonItem release];
+	[controller release]; [navigation release];
 }
 
-- (void)showLayoutAndFeedbackSettings
+- (void)responseChanged:(UISegmentedControl *)sender
+{
+	[NSUserDefaults.standardUserDefaults setInteger:sender.selectedSegmentIndex forKey:@"OpenTTDPadGestureResponse"];
+	OpenTTDPadSettingsGeneration++;
+}
+
+- (void)holdChanged:(UISegmentedControl *)sender
+{
+	const NSInteger values[] = {350, 500, 700};
+	[NSUserDefaults.standardUserDefaults setInteger:values[std::clamp<NSInteger>(sender.selectedSegmentIndex, 0, 2)]
+		forKey:@"OpenTTDPadLongPressMS"];
+	OpenTTDPadSettingsGeneration++;
+}
+
+- (void)expandedTargetsChanged:(UISwitch *)sender
+{
+	[NSUserDefaults.standardUserDefaults setBool:sender.isOn forKey:@"OpenTTDPadExpandedTargets"];
+	OpenTTDPadSettingsGeneration++;
+}
+
+- (void)momentumChanged:(UISwitch *)sender
+{
+	[NSUserDefaults.standardUserDefaults setBool:sender.isOn forKey:@"OpenTTDPadMomentum"];
+	OpenTTDPadSettingsGeneration++;
+}
+
+- (void)controlsSideChanged:(UISegmentedControl *)sender
+{
+	[NSUserDefaults.standardUserDefaults setBool:sender.selectedSegmentIndex == 0 forKey:@"OpenTTDPadControlsLeftHanded"];
+	OpenTTDPadRefreshControlPlacement();
+}
+
+- (void)hapticsChanged:(UISwitch *)sender
+{
+	[NSUserDefaults.standardUserDefaults setBool:sender.isOn forKey:@"OpenTTDPadHaptics"];
+}
+
+- (void)resetTouchTips
 {
 	NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-	[defaults registerDefaults:@{@"OpenTTDPadControlsLeftHanded": @NO, @"OpenTTDPadHaptics": @YES}];
-	UIAlertController *settings = [UIAlertController alertControllerWithTitle:@"Layout & Feedback"
-		message:@"Place the persistent controls under either thumb and choose whether touch actions provide feedback."
-		preferredStyle:UIAlertControllerStyleActionSheet];
-	BOOL left_handed = [defaults boolForKey:@"OpenTTDPadControlsLeftHanded"];
-	[settings addAction:[UIAlertAction actionWithTitle:[NSString stringWithFormat:@"Controls side: %@", left_handed ? @"Left" : @"Right"]
-		style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
-			[defaults setBool:!left_handed forKey:@"OpenTTDPadControlsLeftHanded"];
-			OpenTTDPadRefreshControlPlacement();
-			[self showLayoutAndFeedbackSettings];
-		}]];
-	BOOL haptics = [defaults boolForKey:@"OpenTTDPadHaptics"];
-	[settings addAction:[UIAlertAction actionWithTitle:[NSString stringWithFormat:@"Haptics: %@", haptics ? @"On" : @"Off"]
-		style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
-			[defaults setBool:!haptics forKey:@"OpenTTDPadHaptics"];
-			[self showLayoutAndFeedbackSettings];
-		}]];
-	[settings addAction:[UIAlertAction actionWithTitle:@"Back to Touch Controls" style:UIAlertActionStyleDefault
-		handler:^(__unused UIAlertAction *action) { [self showTouchSettings]; }]];
-	[settings addAction:[UIAlertAction actionWithTitle:@"Done" style:UIAlertActionStyleDefault handler:nil]];
-	settings.popoverPresentationController.sourceView = OpenTTDPadOptionsButton;
-	settings.popoverPresentationController.sourceRect = OpenTTDPadOptionsButton.bounds;
-	[OpenTTDPadPresenter() presentViewController:settings animated:YES completion:nil];
+	[defaults setBool:NO forKey:@"OpenTTDPadTouchHintSeen"];
+	[defaults setBool:NO forKey:@"OpenTTDPadToolHintSeen"];
+	OpenTTDPadPresentMessage(@"Touch Tips Reset", @"The touch coach will appear the next time the app starts a game.");
 }
 
 - (void)showNotices
@@ -430,19 +567,37 @@ static NSURL *OpenTTDPadCreateSaveArchive(NSError **output_error, NSUInteger *ou
 	UIViewController *controller = [[UIViewController alloc] init];
 	controller.title = @"Licenses & Credits";
 	controller.view.backgroundColor = UIColor.systemBackgroundColor;
+	controller.preferredContentSize = CGSizeMake(620, 620);
+	UISegmentedControl *section = [[UISegmentedControl alloc] initWithItems:@[@"Components", @"OpenTTD License"]];
+	section.translatesAutoresizingMaskIntoConstraints = NO;
+	section.selectedSegmentIndex = 0;
+	section.accessibilityLabel = @"License section";
 	UITextView *text = [[UITextView alloc] initWithFrame:CGRectZero];
 	text.translatesAutoresizingMaskIntoConstraints = NO;
 	text.editable = NO;
 	text.selectable = YES;
-	text.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
 	text.adjustsFontForContentSizeCategory = YES;
-	text.text = [NSString stringWithFormat:@"%@\n\n%@", notices, copying];
+	text.attributedText = OpenTTDPadFormattedNotices(notices);
+	text.textContainerInset = UIEdgeInsetsMake(18, 18, 24, 18);
 	text.accessibilityLabel = @"OpenTTDPad licenses and credits";
+	[section addAction:[UIAction actionWithHandler:^(UIAction *action) {
+		UISegmentedControl *control = (UISegmentedControl *)action.sender;
+		if (control.selectedSegmentIndex == 0) {
+			text.attributedText = OpenTTDPadFormattedNotices(notices);
+		} else {
+			text.attributedText = OpenTTDPadFormattedMarkdown(copying);
+		}
+		[text setContentOffset:CGPointZero animated:NO];
+	}] forControlEvents:UIControlEventValueChanged];
+	[controller.view addSubview:section];
 	[controller.view addSubview:text];
 	[NSLayoutConstraint activateConstraints:@[
 		[text.leadingAnchor constraintEqualToAnchor:controller.view.safeAreaLayoutGuide.leadingAnchor constant:16],
 		[text.trailingAnchor constraintEqualToAnchor:controller.view.safeAreaLayoutGuide.trailingAnchor constant:-16],
-		[text.topAnchor constraintEqualToAnchor:controller.view.safeAreaLayoutGuide.topAnchor],
+		[section.leadingAnchor constraintEqualToAnchor:text.leadingAnchor],
+		[section.trailingAnchor constraintEqualToAnchor:text.trailingAnchor],
+		[section.topAnchor constraintEqualToAnchor:controller.view.safeAreaLayoutGuide.topAnchor constant:12],
+		[text.topAnchor constraintEqualToAnchor:section.bottomAnchor constant:10],
 		[text.bottomAnchor constraintEqualToAnchor:controller.view.safeAreaLayoutGuide.bottomAnchor],
 	]];
 	controller.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone
@@ -450,7 +605,8 @@ static NSURL *OpenTTDPadCreateSaveArchive(NSError **output_error, NSUInteger *ou
 	UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:controller];
 	navigation.modalPresentationStyle = UIModalPresentationFormSheet;
 	[OpenTTDPadPresenter() presentViewController:navigation animated:YES completion:nil];
-	[text release]; [controller.navigationItem.rightBarButtonItem release]; [controller release]; [navigation release];
+	[section release]; [text release]; [controller.navigationItem.rightBarButtonItem release];
+	[controller release]; [navigation release];
 }
 
 - (void)dismissPresented
@@ -472,13 +628,13 @@ extern "C" void OpenTTDPadEnsureOptionsButton()
 		[OpenTTDPadOptionsButton removeFromSuperview];
 		[OpenTTDPadOptionsButton release];
 		OpenTTDPadOptionsButton = [[UIButton buttonWithType:UIButtonTypeSystem] retain];
-		const CGFloat scale = OpenTTDPadOverlayScale(window);
-		OpenTTDPadOptionsButton.frame = CGRectMake(0, 0, 52.0 * scale, 52.0 * scale);
-		OpenTTDPadOptionsButton.layer.cornerRadius = 16.0 * scale;
+		const CGFloat scale = OpenTTDPadOverlayCoordinateScale(window);
+		OpenTTDPadOptionsButton.frame = CGRectMake(0, 0, 44.0 * scale, 44.0 * scale);
+		OpenTTDPadOptionsButton.layer.cornerRadius = 13.0 * scale;
 		OpenTTDPadOptionsButton.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.88];
 		OpenTTDPadOptionsButton.layer.borderWidth = scale;
 		OpenTTDPadOptionsButton.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.24].CGColor;
-		UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration configurationWithPointSize:20.0 * scale
+		UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration configurationWithPointSize:17.0 * scale
 			weight:UIImageSymbolWeightSemibold];
 		[OpenTTDPadOptionsButton setImage:[[UIImage systemImageNamed:@"ellipsis"] imageWithConfiguration:symbol]
 			forState:UIControlStateNormal];

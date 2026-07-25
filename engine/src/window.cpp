@@ -92,6 +92,7 @@ uint8_t _scroller_click_timeout = 0;
 
 bool _scrolling_viewport;  ///< A viewport is being scrolled with the mouse.
 bool _mouse_hovering;      ///< The mouse is hovering over the same point.
+bool _touch_cursor_suppresses_hover; ///< A visible direct-touch cursor must not create desktop hover UI.
 
 SpecialMouseMode _special_mouse_mode; ///< Mode of the mouse.
 
@@ -2999,7 +3000,11 @@ void HandleMouseEvents()
 	static Point hover_pos = {0, 0};
 
 	if (_settings_client.gui.hover_delay_ms > 0) {
-		if (!_cursor.in_window || click != MC_NONE || mousewheel != 0 || _left_button_down || _right_button_down ||
+		if (_touch_cursor_suppresses_hover) {
+			hover_pos = _cursor.pos;
+			hover_time = std::chrono::steady_clock::now();
+			_mouse_hovering = false;
+		} else if (!_cursor.in_window || click != MC_NONE || mousewheel != 0 || _left_button_down || _right_button_down ||
 				hover_pos.x == 0 || abs(_cursor.pos.x - hover_pos.x) >= MAX_OFFSET_HOVER  ||
 				hover_pos.y == 0 || abs(_cursor.pos.y - hover_pos.y) >= MAX_OFFSET_HOVER) {
 			hover_pos = _cursor.pos;

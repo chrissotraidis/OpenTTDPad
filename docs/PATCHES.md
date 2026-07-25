@@ -11,6 +11,7 @@ purpose and normal review.
 | `engine/src/CMakeLists.txt` | Include the isolated touch module | downstream | not filed |
 | `engine/src/fontcache/freetypefontcache.cpp` | Ask the iOS CoreText bridge for a language-capable fallback font when a glyph is missing | downstream | not filed |
 | `engine/src/music/CMakeLists.txt` | Exclude macOS-only Cocoa MIDI and register the native iOS Audio Unit MIDI driver | downstream | not filed |
+| `engine/src/openttd.cpp` | Prevent iPad in-app Exit from ending the engine loop inside a still-live UIKit host; return active games to the title screen instead | downstream | not filed |
 | `engine/src/sound/CMakeLists.txt` | Exclude macOS-only Cocoa audio on iOS | downstream | not filed |
 | `engine/src/os/CMakeLists.txt` | Include the iOS platform directory | downstream | not filed |
 | `engine/src/os/macosx/CMakeLists.txt` | Prevent macOS platform sources from entering iOS | downstream | not filed |
@@ -20,8 +21,11 @@ purpose and normal review.
 | `engine/src/stdafx.h` | Exclude CoreServices/ApplicationServices preamble on iOS | downstream | not filed |
 | `engine/src/strings.cpp` | Use portable locale discovery on iOS | downstream | not filed |
 | `engine/src/tests/CMakeLists.txt` | Register touch recognizer host tests | downstream | not filed |
+| `engine/src/toolbar_gui.cpp` | Omit desktop-only Exit-program entries from the iPad save/load menus | downstream | not filed |
+| `engine/src/intro_gui.cpp` | Omit the desktop Exit-program control from the iPad title screen | downstream | not filed |
 | `engine/src/video/cocoa/CMakeLists.txt` | Exclude Cocoa renderer/window sources on iOS | downstream | not filed |
-| `engine/src/video/sdl2_v.cpp` | Attach SDL to the active scene; force iPad fullscreen; separate finger/mouse sources; probe and translate direct gestures | downstream | not filed |
+| `engine/src/video/sdl2_v.cpp` | Attach SDL to the active scene; force iPad fullscreen; separate finger/mouse sources; show the touch cursor without desktop hover tooltips; directly pan and zoom the viewport; probe and translate gestures | downstream | not filed |
+| `engine/src/window.cpp`, `engine/src/window_gui.h` | Suppress desktop hover timing while the visible cursor is owned by direct touch; restore it for genuine mouse movement | downstream | not filed |
 | `engine/src/network/core/http_curl.cpp` | Resolve the packaged Mozilla CA bundle before Unix host paths so iPad HTTPS retains peer verification | downstream | not filed |
 
 New downstream source surfaces:

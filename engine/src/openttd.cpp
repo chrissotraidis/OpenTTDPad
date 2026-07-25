@@ -816,6 +816,16 @@ int openttd_main(std::span<std::string_view> arguments)
 
 void HandleExitGameRequest()
 {
+#ifdef OPENTTDPAD_IOS
+	/* iPadOS owns application termination. Ending OpenTTD's main loop leaves
+	 * SDL's UIKit host alive with a black surface, so in-app exit requests
+	 * return to the title screen instead. The title screen omits its Exit
+	 * control on iOS. Bootstrap failures retain the normal shutdown path. */
+	if (_game_mode != GM_BOOTSTRAP) {
+		if (_game_mode != GM_MENU) AskExitToGameMenu();
+		return;
+	}
+#endif
 	if (_game_mode == GM_MENU || _game_mode == GM_BOOTSTRAP) { // do not ask to quit on the main screen
 		_exit_game = true;
 	} else if (_settings_client.gui.autosave_on_exit) {

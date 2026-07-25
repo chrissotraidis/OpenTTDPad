@@ -48,33 +48,38 @@ TEST_CASE("OpenTTDPad double tap respects time and distance windows")
 	CHECK_FALSE(HasAction(far, ActionType::DoubleTap));
 }
 
-TEST_CASE("OpenTTDPad map drag waits for deliberate movement then pans")
+TEST_CASE("OpenTTDPad one-finger map movement is suppressed")
 {
 	GestureState state;
 	state.FingerDown(1, {50, 50}, 0, false);
 	CHECK(state.FingerMove(1, {60, 50}, 20).empty());
-	auto actions = state.FingerMove(1, {61, 50}, 30);
-	CHECK(HasAction(actions, ActionType::PanBegin));
-	CHECK(HasAction(actions, ActionType::PanMove));
-	CHECK(HasAction(state.FingerUp(1, {70, 50}, 60), ActionType::PanEnd));
+	CHECK(state.FingerMove(1, {61, 50}, 30).empty());
+	CHECK(state.GetState() == State::OneFingerSuppressed);
+	CHECK(state.FingerUp(1, {70, 50}, 60).empty());
+	CHECK(state.GetState() == State::Idle);
 }
 
-TEST_CASE("OpenTTDPad map pan reports release velocity but construction never does")
+TEST_CASE("OpenTTDPad two-finger map pan reports release velocity but construction never does")
 {
 	GestureState pan;
 	pan.FingerDown(1, {50, 50}, 1, false);
-	pan.FingerMove(1, {70, 50}, 20);
-	pan.FingerMove(1, {100, 50}, 40);
-	auto end = pan.FingerUp(1, {110, 50}, 45);
+	pan.FingerDown(2, {90, 50}, 5, false);
+	pan.FingerMove(1, {65, 50}, 20);
+	pan.FingerMove(2, {105, 50}, 30);
+	pan.FingerMove(1, {75, 50}, 40);
+	auto end = pan.FingerUp(2, {105, 50}, 45);
 	REQUIRE(end.size() == 1);
 	CHECK(end.front().type == ActionType::PanEnd);
 	CHECK(end.front().delta.x > 0);
+	CHECK(pan.FingerUp(1, {75, 50}, 50).empty());
 
 	GestureState held;
 	held.FingerDown(1, {50, 50}, 1, false);
-	held.FingerMove(1, {70, 50}, 20);
-	held.FingerMove(1, {100, 50}, 40);
-	auto stopped = held.FingerUp(1, {100, 50}, 121);
+	held.FingerDown(2, {90, 50}, 5, false);
+	held.FingerMove(1, {65, 50}, 20);
+	held.FingerMove(2, {105, 50}, 30);
+	held.FingerMove(1, {75, 50}, 40);
+	auto stopped = held.FingerUp(2, {105, 50}, 121);
 	REQUIRE(stopped.size() == 1);
 	CHECK(stopped.front().delta.x == 0);
 
@@ -122,23 +127,38 @@ TEST_CASE("OpenTTDPad two-finger tap rejects movement and slow staggering")
 	CHECK_FALSE(HasAction(staggered.FingerUp(2, {180, 100}, 140), ActionType::SecondaryClick));
 }
 
-TEST_CASE("OpenTTDPad pinch is distinct from two-finger pan")
+TEST_CASE("OpenTTDPad two-finger pan and pinch intent stay separate")
 {
 	GestureState pinch;
 	pinch.FingerDown(1, {100, 100}, 0, false);
 	pinch.FingerDown(2, {140, 100}, 10, false);
-	CHECK(pinch.FingerMove(2, {170, 100}, 30).empty());
-	CHECK(HasAction(pinch.FingerMove(2, {205, 100}, 50), ActionType::ZoomIn));
+	CHECK(pinch.FingerMove(1, {80, 100}, 30).empty());
+	CHECK(HasAction(pinch.FingerMove(2, {160, 100}, 40), ActionType::ZoomIn));
+	CHECK(pinch.GetState() == State::Pinching);
+	CHECK_FALSE(HasAction(pinch.FingerMove(1, {90, 110}, 50), ActionType::PanMove));
 
 	GestureState pan;
 	pan.FingerDown(1, {100, 100}, 0, false);
 	pan.FingerDown(2, {140, 100}, 10, false);
-	pan.FingerMove(1, {120, 120}, 30);
-	auto actions = pan.FingerMove(2, {160, 120}, 40);
-	CHECK((HasAction(actions, ActionType::PanBegin) || pan.GetState() == State::Panning));
+	CHECK(pan.FingerMove(1, {125, 100}, 30).empty());
+	auto actions = pan.FingerMove(2, {165, 100}, 40);
+	CHECK(HasAction(actions, ActionType::PanBegin));
+	CHECK(pan.GetState() == State::Panning);
+	CHECK_FALSE(HasAction(pan.FingerMove(2, {200, 100}, 50), ActionType::ZoomIn));
+	CHECK(pan.GetState() == State::Panning);
 }
 
-TEST_CASE("OpenTTDPad two-finger pan reanchors when one finger lifts")
+TEST_CASE("OpenTTDPad anchored pinch resolves after the intent window")
+{
+	GestureState state;
+	state.FingerDown(1, {100, 100}, 0, false);
+	state.FingerDown(2, {140, 100}, 10, false);
+	CHECK(state.FingerMove(2, {180, 100}, 50).empty());
+	CHECK(HasAction(state.FingerMove(2, {180, 100}, 101), ActionType::ZoomIn));
+	CHECK(state.GetState() == State::Pinching);
+}
+
+TEST_CASE("OpenTTDPad two-finger pan stops when one finger lifts")
 {
 	GestureState state;
 	state.FingerDown(1, {100, 100}, 0, false);
@@ -146,18 +166,13 @@ TEST_CASE("OpenTTDPad two-finger pan reanchors when one finger lifts")
 	state.FingerMove(1, {120, 120}, 30);
 	state.FingerMove(2, {160, 120}, 40);
 
-	auto reanchor = state.FingerUp(2, {160, 120}, 50);
-	REQUIRE(reanchor.size() == 1);
-	CHECK(reanchor.front().type == ActionType::PanBegin);
-	CHECK(reanchor.front().position.x == 120);
-	CHECK(reanchor.front().position.y == 120);
-
-	auto moved = state.FingerMove(1, {125, 120}, 60);
-	REQUIRE(moved.size() == 1);
-	CHECK(moved.front().type == ActionType::PanMove);
-	CHECK(moved.front().delta.x == 5);
-	CHECK(moved.front().delta.y == 0);
-	CHECK(HasAction(state.FingerUp(1, {125, 120}, 70), ActionType::PanEnd));
+	auto stopped = state.FingerUp(2, {160, 120}, 50);
+	REQUIRE(stopped.size() == 1);
+	CHECK(stopped.front().type == ActionType::PanEnd);
+	CHECK(state.GetState() == State::OneFingerSuppressed);
+	CHECK(state.FingerMove(1, {125, 120}, 60).empty());
+	CHECK(state.FingerUp(1, {125, 120}, 70).empty());
+	CHECK(state.GetState() == State::Idle);
 }
 
 TEST_CASE("OpenTTDPad long press enters precision and commits on lift")
@@ -221,7 +236,9 @@ TEST_CASE("OpenTTDPad cancellation releases any active gesture")
 {
 	GestureState pan;
 	pan.FingerDown(1, {50, 50}, 0, false);
-	pan.FingerMove(1, {70, 50}, 20);
+	pan.FingerDown(2, {90, 50}, 5, false);
+	pan.FingerMove(1, {80, 50}, 20);
+	pan.FingerMove(2, {120, 50}, 30);
 	auto actions = pan.Cancel();
 	CHECK(HasAction(actions, ActionType::PanEnd));
 	CHECK(HasAction(actions, ActionType::Cancel));

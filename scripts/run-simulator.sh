@@ -12,4 +12,4 @@ app="$repo_root/build/ios-sim/openttd.app"
 
 xcrun simctl bootstatus "$device" -b
 xcrun simctl install "$device" "$app"
-xcrun simctl launch --terminate-running-process "$device" org.openttd.OpenTTDPad
+xcrun simctl launch --terminate-running-process "$device" com.chrissotraidis.openttdpad

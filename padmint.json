@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "id": "openttdpad",
+  "name": "OpenTTDPad",
+  "game": "OpenTTD (Transport Tycoon Deluxe)",
+  "kind": "upstream-engine",
+  "status": "experimental",
+  "inputs": [
+    {
+      "type": "game-data",
+      "when": "in-app",
+      "description": "Nothing is required: free OpenGFX graphics, OpenSFX sounds and OpenMSX music are built in. If you own Transport Tycoon Deluxe you can add its data in the app later; the build never reads it."
+    }
+  ],
+  "targets": {
+    "ios": {
+      "hosts": {
+        "macos-arm64": "experimental"
+      },
+      "tools": [
+        "git",
+        "cmake",
+        "ninja"
+      ],
+      "output": "ipa",
+      "check": "ipa",
+      "steps": [
+        {
+          "stage": "fetch",
+          "command": [
+            "{repo}/scripts/bootstrap-reference.sh"
+          ]
+        },
+        {
+          "stage": "compile",
+          "command": [
+            "{repo}/scripts/build-device.sh"
+          ]
+        },
+        {
+          "stage": "package",
+          "command": [
+            "{repo}/scripts/package-ipa.sh",
+            "{output}"
+          ]
+        }
+      ]
+    }
+  },
+  "requirements": {
+    "disk_gb": 6,
+    "tools": [
+      {
+        "name": "git",
+        "version_args": [
+          "--version"
+        ]
+      },
+      {
+        "name": "cmake",
+        "version_args": [
+          "--version"
+        ]
+      },
+      {
+        "name": "ninja",
+        "version_args": [
+          "--version"
+        ]
+      },
+      {
+        "name": "xcodebuild",
+        "version_args": [
+          "-version"
+        ],
+        "min_version": "26",
+        "player": true,
+        "note": "Install Xcode 26 or newer with its iOS platform, then select it in Xcode Settings > Locations > Command Line Tools; Command Line Tools alone are not enough."
+      },
+      {
+        "name": "xcrun",
+        "label": "Xcode iPhoneOS SDK",
+        "version_args": [
+          "--sdk",
+          "iphoneos",
+          "--show-sdk-path"
+        ],
+        "player": true,
+        "note": "Install Xcode 26 or newer with its iOS platform, then select it in Xcode Settings > Locations > Command Line Tools; Command Line Tools alone are not enough."
+      }
+    ]
+  },
+  "publication": {
+    "public_binaries": true,
+    "reason": "OpenTTDPad is GPLv2 and bundles only freely redistributable content (OpenGFX, OpenSFX, OpenMSX, TimGM6mb). Releases publish an unsigned IPA with its corresponding source; no original Transport Tycoon Deluxe data is included."
+  }
+}

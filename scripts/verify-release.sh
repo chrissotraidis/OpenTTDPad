@@ -26,7 +26,8 @@ for required in \
     scripts/compile-app-assets.sh scripts/package-ipa.sh \
     scripts/package-source-release.sh patches/sdl2-uikit-root-controller.patch \
     patches/sdl2-ios-scenes.patch \
-    os/ios/AppIcon.png os/ios/AppIconContents.json os/ios/BrandTintContents.json; do
+    os/ios/AppIcon.png os/ios/AppIconContents.json os/ios/BrandTintContents.json \
+    padmint.json docs/RELEASING.md; do
     if [ ! -f "$repo_root/$required" ]; then
         fail "missing required release input: $required"
     fi

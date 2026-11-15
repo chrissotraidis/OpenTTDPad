@@ -31,12 +31,14 @@ for component in SDL2 xz libpng curl mbedtls freetype harfbuzz icu OpenGFX OpenS
     fi
     (
         cd "$repo_root/ref"
-        # Upstream test data that the release build never uses: xz's
-        # deliberately corrupt archives and mbedtls's suite vectors. Builds
-        # happen under build/, never in ref/, so upstream folders such as
-        # FreeType's builds/ and xz's build-aux/ are source and stay.
+        # Left out because the release build never uses them: xz's
+        # deliberately corrupt test archives, mbedtls's suite vectors and ICU's
+        # Java implementation (only icu4c headers are used). Builds happen
+        # under build/, never in ref/, so upstream folders such as FreeType's
+        # builds/ and xz's build-aux/ are source and stay.
         tar --exclude='.git' \
             --exclude='xz/tests/files' --exclude='mbedtls/tests/suites/*.data' \
+            --exclude='icu/icu4j' \
             -cf - "$component"
     ) | (
         cd "$source_root/ref"

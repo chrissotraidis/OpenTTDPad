@@ -5,7 +5,10 @@ repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 artifact_dir="$repo_root/build/artifacts"
 work_dir=$(mktemp -d "${TMPDIR:-/tmp}/openttdpad-source.XXXXXX")
 source_root="$work_dir/OpenTTDPad-source"
-archive="$artifact_dir/OpenTTDPad-corresponding-source.tar.gz"
+# A zip keeps the free-content archives inside within PadMint's three-level
+# audit depth, and COPYFILE_DISABLE stops macOS adding ._ metadata files.
+archive="$artifact_dir/OpenTTDPad-corresponding-source.zip"
+export COPYFILE_DISABLE=1
 
 if [ -n "$(git -C "$repo_root" status --porcelain)" ]; then
     printf '%s\n' "Refusing to package source from a dirty worktree; commit or stash changes first" >&2
@@ -28,7 +31,11 @@ for component in SDL2 xz libpng curl mbedtls freetype harfbuzz icu OpenGFX OpenS
     fi
     (
         cd "$repo_root/ref"
-        tar --exclude='.git' --exclude='build*' -cf - "$component"
+        # Upstream test data that the release build never uses: xz's
+        # deliberately corrupt archives and mbedtls's suite vectors.
+        tar --exclude='.git' --exclude='build*' \
+            --exclude='xz/tests/files' --exclude='mbedtls/tests/suites/*.data' \
+            -cf - "$component"
     ) | (
         cd "$source_root/ref"
         tar -xf -
@@ -52,10 +59,14 @@ if [ -z "$base_commit" ]; then
 fi
 git -C "$repo_root" format-patch --stdout "$base_commit..HEAD" > \
     "$artifact_dir/OpenTTDPad-downstream.patch"
-tar -czf "$archive" -C "$work_dir" OpenTTDPad-source
+rm -f "$archive"
+(
+    cd "$work_dir"
+    zip -Xqr "$archive" OpenTTDPad-source
+)
 (
     cd "$artifact_dir"
-    shasum -a 256 OpenTTDPad-corresponding-source.tar.gz OpenTTDPad-downstream.patch
+    shasum -a 256 OpenTTDPad-corresponding-source.zip OpenTTDPad-downstream.patch
 ) > "$artifact_dir/OpenTTDPad-source.sha256"
 
 printf 'Packaged corresponding source: %s\n' "$archive"

@@ -105,7 +105,7 @@ On an Apple Silicon Mac with Xcode 26 or newer and its iOS platform, choose
 **OpenTTDPad** in [PadMint](https://github.com/chrissotraidis/padmint). PadMint
 fetches this repository's release, builds the app with the recipe in
 [`padmint.json`](padmint.json) and checks the result. There is no game file to
-choose. Plan for about 6 GB of free space on the Mac while it builds.
+choose. Plan for about 4 GB of free space on the Mac while it builds.
 
 </details>
 

@@ -42,14 +42,18 @@ for component in SDL2 xz libpng curl mbedtls freetype harfbuzz icu OpenGFX OpenS
     )
 done
 
+# The free content goes in unpacked, exactly as the app bundles it, so the
+# release gates can read every file. SHA256SUMS records the original downloads.
 mkdir -p "$source_root/ref/game-files"
-for input in \
-    SHA256SUMS \
-    opengfx-8.0-all.zip opensfx-1.0.3-all.zip openmsx-0.4.2-all.zip \
-    cacert-2026-07-16.pem MPL-2.0.txt \
-    timgm6mb-soundfont_1.3.orig.tar.gz timgm6mb-soundfont_1.3-5.debian.tar.xz; do
-    cp "$repo_root/ref/game-files/$input" "$source_root/ref/game-files/$input"
-done
+(
+    cd "$repo_root/ref/game-files"
+    tar -cf - SHA256SUMS cacert-2026-07-16.pem MPL-2.0.txt \
+        extracted/opengfx/opengfx-8.0 extracted/opensfx/opensfx-1.0.3 \
+        extracted/openmsx/openmsx-0.4.2 timgm6mb-soundfont_1.3 timgm6mb-debian
+) | (
+    cd "$source_root/ref/game-files"
+    tar -xf -
+)
 
 base_commit=$(sed -n 's/^- Subtree merge commit: `\([^`]*\)`.*/\1/p' \
     "$repo_root/UPSTREAM_VERSION.md")

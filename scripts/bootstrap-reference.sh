@@ -65,6 +65,7 @@ clone_tag "$ref_dir/freetype" https://github.com/freetype/freetype.git VER-2-14-
 clone_tag "$ref_dir/harfbuzz" https://github.com/harfbuzz/harfbuzz.git 14.2.0
 clone_tag "$ref_dir/icu" https://github.com/unicode-org/icu.git release-78.1
 apply_patch_once "$ref_dir/SDL2" "$repo_root/patches/sdl2-uikit-root-controller.patch"
+apply_patch_once "$ref_dir/SDL2" "$repo_root/patches/sdl2-ios-scenes.patch"
 clone_commit "$ref_dir/OpenGFX" https://github.com/OpenTTD/OpenGFX.git \
     c51c904f4f6e7466ee73f907520ef7ea9a53bcbb
 clone_commit "$ref_dir/OpenSFX" https://github.com/OpenTTD/OpenSFX.git \

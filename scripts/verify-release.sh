@@ -25,6 +25,7 @@ for required in \
     scripts/bootstrap-ios.sh scripts/build-simulator.sh scripts/build-device.sh \
     scripts/compile-app-assets.sh scripts/package-ipa.sh \
     scripts/package-source-release.sh patches/sdl2-uikit-root-controller.patch \
+    patches/sdl2-ios-scenes.patch \
     os/ios/AppIcon.png os/ios/AppIconContents.json os/ios/BrandTintContents.json; do
     if [ ! -f "$repo_root/$required" ]; then
         fail "missing required release input: $required"

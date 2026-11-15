@@ -1,327 +1,279 @@
-<div align="center">
+<p align="center">
+  <img src="os/ios/AppIcon.png" alt="OpenTTDPad app icon" width="160">
+</p>
 
-<img src="os/ios/AppIcon.png" alt="OpenTTDPad app icon" width="160">
+<h1 align="center">OpenTTDPad</h1>
 
-# OpenTTDPad
+<p align="center">
+  <strong>OpenTTD, native on iPad.</strong><br>
+  Build railways, roads, ports and airports with touch-first construction, a precision loupe,
+  Apple Pencil, trackpad and keyboard. Desktop-compatible saves and free graphics, sound and music included.
+</p>
 
-**OpenTTD, shaped for iPad.**
+<p align="center">
+  <img alt="iPadOS 17 or later" src="https://img.shields.io/badge/iPadOS-17%2B-0A84FF?logo=apple">
+  <img alt="Native ARM64" src="https://img.shields.io/badge/runtime-native%20ARM64-30D158">
+  <img alt="OpenTTD 15.3" src="https://img.shields.io/badge/OpenTTD-15.3-FF9F0A">
+  <img alt="SDL 2.32.10 with UIKit scenes" src="https://img.shields.io/badge/SDL-2.32.10%20%2B%20scenes-5E5CE6">
+  <img alt="iPadOS 27 physical iPad checked" src="https://img.shields.io/badge/iPadOS%2027-physical%20iPad%20checked-30D158">
+  <img alt="Free OpenGFX, OpenSFX and OpenMSX included" src="https://img.shields.io/badge/content-OpenGFX%20%C2%B7%20OpenSFX%20%C2%B7%20OpenMSX-3EB489">
+  <img alt="Original TTD data not required" src="https://img.shields.io/badge/original%20TTD%20data-not%20required-8E8E93">
+  <a href="LICENSE"><img alt="License: GPLv2" src="https://img.shields.io/badge/license-GPLv2-8E8E93"></a>
+  <img alt="Status: preview" src="https://img.shields.io/badge/status-preview-FF9F0A">
+  <a href="https://discord.gg/xwHfUD2bxW"><img alt="Join the community on Discord" src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&amp;logoColor=white"></a>
+</p>
 
-A native, unofficial iPadOS port with touch-first construction, precision
-tools, desktop-compatible saves, free offline content, and native pointer and
-keyboard input.
+<p align="center">
+  <a href="#get-openttdpad">Get OpenTTDPad</a> ·
+  <a href="#controls">Controls</a> ·
+  <a href="#external-displays-and-ipados-27">External displays</a> ·
+  <a href="#current-status">Status</a> ·
+  <a href="#frequently-asked-questions">FAQ</a> ·
+  <a href="docs/STATUS.md">Evidence log</a>
+</p>
 
-[![Release stage: Simulator beta](https://img.shields.io/badge/release-Simulator_beta-f0b429?style=for-the-badge)](#release-track)
-[![iPadOS 17+](https://img.shields.io/badge/iPadOS-17%2B-0a84ff?style=for-the-badge)](#choose-your-route)
-[![Host tests: 111/111](https://img.shields.io/badge/host_tests-111%2F111-2da44e?style=for-the-badge)](#proof-not-promises)
-[![XCTest: 21/21](https://img.shields.io/badge/XCTest-21%2F21-2da44e?style=for-the-badge)](#proof-not-promises)
-[![GPLv2](https://img.shields.io/badge/license-GPLv2-22334d?style=for-the-badge)](LICENSE)
+<p align="center">
+  <img src="docs/evidence/p2-ios-xcuitest-touch.jpg" alt="OpenTTDPad running on iPad with native touch controls" width="920">
+</p>
 
-**Native arm64 · OpenTTD 15.3 · no original TTD assets required**
+OpenTTDPad is an unofficial iPadOS port of [OpenTTD](https://www.openttd.org/),
+the open-source transport simulation based on Transport Tycoon Deluxe. The
+OpenTTD 15.3 simulation, economy, pathfinding and save format are untouched.
+OpenTTDPad adds the iPad parts: a UIKit scene shell, a gesture system that
+turns fingers into OpenTTD actions, Files integration, native MIDI music,
+international text, verified HTTPS for Online Content, and reproducible builds.
 
-[Explore](#a-60-second-tour) ·
-[Touch controls](#touch-that-understands-the-game) ·
-[Build](#choose-your-route) ·
-[Verification](#proof-not-promises) ·
-[iPad test gate](#the-last-mile-a-physical-ipad) ·
-[Contribute](#contributing)
-
-<img src="docs/evidence/p2-ios-xcuitest-touch.jpg" alt="OpenTTDPad running in an iPad Pro Simulator with native touch controls" width="920">
-
-</div>
+**AI disclosure:** OpenTTDPad uses substantial AI assistance for code, tests,
+documentation, debugging and maintenance. There is no audited percentage of
+AI-generated code; build, test and device-acceptance records state what has
+actually been checked. This describes OpenTTDPad's workflow, not the authorship
+of OpenTTD or its other upstream projects.
 
 > [!IMPORTANT]
-> OpenTTDPad is a **public-source preview and Simulator-validated beta**, not a
-> hardware-validated 1.0. The native Simulator app and unsigned arm64 device
-> build work; automated UI tests pass across Pro, base, and mini iPad classes.
-> A real iPad is still required to validate touch feel, Pencil, pointer,
-> lifecycle, audio routes, performance, thermals, signing, and save round trips.
-> See the [release track](#release-track) and
-> [live project status](docs/STATUS.md).
+> **OpenTTDPad is a preview. There is no published download yet; build and sign
+> your own copy on a Mac.** On 2026-11-15 the current build was signed, installed
+> over an existing copy and launched on a physical iPad Pro 12.9-inch (6th
+> generation) running iPadOS 27.2.1. It drew the OpenTTD 15.3 title screen and
+> menu at full screen, played music and responded to touch. A full touch-only
+> game, Pencil, trackpad, keyboard, external displays and long sessions have not
+> yet been checked on hardware. See [Current status](#current-status).
 
-## Choose your route
+## What's new: iPadOS 27 and external displays
+
+Earlier builds launched on iPadOS 27 to a **black screen**: the game was running
+and its music played, but SDL created its window outside the app's UIKit scene,
+so iPadOS never showed it. OpenTTDPad now carries the same SDL 2.32.10 scene
+backport as the other Pad ports
+([`patches/sdl2-ios-scenes.patch`](patches/sdl2-ios-scenes.patch)):
+
+- SDL starts only after iPadOS connects the app's scene, and creates its window
+  directly on that scene.
+- The game window follows its scene when it rotates, resizes, or moves to
+  another display, and picks up the new screen's pixel density.
+- If iPadOS replaces the scene, the new scene takes over the existing game
+  window instead of leaving it blank.
+- Orientation comes from the scene, as the iPadOS 27 SDK requires.
+
+## Get OpenTTDPad
+
+You need an Apple Silicon Mac with Xcode and an iPadOS SDK, CMake, Ninja, Git,
+curl and unzip, plus about 10 GB of free space. The bootstrap downloads pinned,
+freely redistributable sources and content; nothing from the original Transport
+Tycoon Deluxe is downloaded or bundled.
 
 <details open>
-<summary><strong>I want to run OpenTTDPad in Simulator</strong></summary>
-
-### One-command bootstrap
-
-You need an Apple Silicon Mac, Xcode with an iOS Simulator runtime, CMake,
-Ninja, Git, curl, unzip, and roughly 10 GB of free space.
+<summary><strong>Build for a real iPad</strong></summary>
 
 ```sh
 git clone https://github.com/chrissotraidis/OpenTTDPad.git
 cd OpenTTDPad
-./scripts/bootstrap-ios.sh
-./scripts/run-simulator.sh booted
-```
-
-`bootstrap-ios.sh` downloads pinned, freely redistributable sources and content
-before producing `build/ios-sim/openttd.app`. Boot any iPad Simulator first, or
-pass its UDID instead of `booted`.
-
-</details>
-
-<details>
-<summary><strong>I want to build the unsigned iPad app</strong></summary>
-
-```sh
+./scripts/bootstrap-reference.sh
 ./scripts/build-device.sh
 ./scripts/package-ipa.sh
 ./scripts/verify-release.sh
 ```
 
-The reproducible output is `build/artifacts/OpenTTDPad-unsigned.ipa`. Installing
-it on hardware requires your own Apple signing identity and provisioning
-profile. No credentials or pre-signed binary are stored in this repository.
+The output is `build/artifacts/OpenTTDPad-unsigned.ipa` (the app bundle is
+`build/ios-device/openttd.app`). Sign it with your own Apple development
+identity and provisioning profile, then install it with Xcode, `devicectl` or
+your usual sideloading tool. No credentials or signed binaries are stored in this
+repository.
+
+Install updates over the existing app. Deleting OpenTTDPad first also deletes
+its saves, settings and downloaded content; export saves from the app first if
+you must reinstall. The install needs roughly 65 MB of free space on the iPad.
 
 </details>
 
 <details>
-<summary><strong>I want to inspect or contribute to the port</strong></summary>
+<summary><strong>Run it in the iPad Simulator</strong></summary>
 
-Start with the [architecture](docs/02-architecture.md), the
-[touch contract](docs/03-touch-interaction.md), and the
-[current implementation status](docs/STATUS.md). Before changing the engine or
-platform boundary, read the [builder instructions](docs/00-builder-instructions.md)
-and the [downstream patch log](docs/PATCHES.md).
-
-The highest-value next contribution is evidence: run the
-[physical-device matrix](docs/10-testing.md) on a real iPad and record what
-actually happens.
-
-</details>
-
-## A 60-second tour
-
-OpenTTDPad keeps the OpenTTD simulation and save format intact. The downstream
-work sits at the Apple-platform boundary: scene lifecycle, safe areas, touch
-recognition, Files integration, international text, online content, audio, and
-reproducible iPad builds.
-
-<table>
-  <tr>
-    <td width="50%">
-      <img src="docs/readme/online-content.png" alt="OpenTTD Online Content catalog running in OpenTTDPad">
-    </td>
-    <td width="50%">
-      <img src="docs/readme/international-text.png" alt="OpenTTDPad rendering an Arabic right-to-left interface">
-    </td>
-  </tr>
-  <tr>
-    <td align="center"><strong>Online Content</strong><br>Verified HTTPS catalog access</td>
-    <td align="center"><strong>International text</strong><br>HarfBuzz, ICU, and CoreText fallback</td>
-  </tr>
-</table>
-
-- **Native, not wrapped.** Arm64 iPad app; no browser, emulator, JIT, ads, or
-  private API.
-- **Touch is a real input mode.** Gestures resolve to OpenTTD actions through a
-  dedicated state machine rather than pretending every finger is a mouse.
-- **Playable offline.** OpenGFX, OpenSFX, OpenMSX, and native MIDI provide a
-  free first game without commercial Transport Tycoon Deluxe data.
-- **Still OpenTTD underneath.** The economy, pathfinding, map generation,
-  multiplayer determinism, saves, mouse, trackpad, and keyboard remain familiar.
-
-<details>
-<summary><strong>See how the port stays isolated from the simulation</strong></summary>
-
-```mermaid
-flowchart LR
-    A["Touch · Pencil · pointer · keyboard"] --> B["iPad input layer"]
-    B --> C["OpenTTD 15.3"]
-    D["UIKit scenes · SDL · safe areas"] --> C
-    C --> E["Desktop-compatible saves"]
-    C --> F["Free content · HTTPS · audio"]
-    C --> G["Upstream simulation and multiplayer rules"]
+```sh
+./scripts/bootstrap-ios.sh
+./scripts/run-simulator.sh booted
 ```
 
-iPad-specific work stays in dedicated platform and touch components. Changes
-to files inherited from upstream are recorded in
-[`docs/PATCHES.md`](docs/PATCHES.md).
+Boot any iPad Simulator first, or pass its UDID instead of `booted`.
 
 </details>
 
-## Touch that understands the game
+## Controls
 
 The gesture vocabulary stays small; context does the clever work.
 
-<details open>
-<summary><strong>Move around the world</strong></summary>
-
 | Gesture | Result |
 |---|---|
-| Tap | Select, activate, or place |
+| Tap | Select, activate or place |
 | Drag the map | Pan, with optional momentum |
 | Pinch | Zoom around the point between your fingers |
-| Two-finger drag | Pan from anywhere, including over UI |
+| Two-finger drag | Pan from anywhere, including over windows |
 | Double-tap | Perform the default action |
-
-</details>
-
-<details>
-<summary><strong>Build without fighting the interface</strong></summary>
-
-| Gesture | Result |
-|---|---|
 | Drag with a construction tool | Build continuously |
 | Drag a window | Move the window, not the map |
 | Two-finger tap | Secondary action or details |
-| Add a second finger while constructing | Abort the active tool safely |
-| Native Cancel control | End construction without a stray placement |
+| Add a second finger while building | Abort the active tool safely |
+| Touch and hold | Open a 132-point precision loupe; move to aim, lift to commit |
+| **Cancel** button | End construction without a stray placement |
 
-</details>
+Undersized OpenTTD controls get touch targets of at least 44 points without
+changing their artwork, and controls can be placed for left- or right-handed
+reach. Mouse, trackpad, scroll wheel and hardware keyboard keep their normal
+OpenTTD behaviour. The full rules are in the
+[touch interaction contract](docs/03-touch-interaction.md) and
+[pointer and keyboard notes](docs/04-pointer-keyboard.md).
+
+## External displays and iPadOS 27
+
+OpenTTDPad is a single-scene, landscape, full-screen iPad app. The game window
+belongs to that scene: when iPadOS mirrors the iPad or Stage Manager moves the
+scene to a connected display, SDL resizes the window to the scene's bounds and
+the new screen's scale instead of keeping the iPad panel's size. A second
+scene, such as a reconnect after a display change, never starts the game a
+second time.
+
+This behaviour matches the fix already shipped in the other Pad ports. On
+OpenTTDPad it has been checked on the iPad's own display; a physical external
+monitor and Stage Manager have not been tested yet.
+
+## Current status
+
+| Area | State |
+|---|---|
+| Engine | OpenTTD 15.3; gameplay and save compatibility preserved |
+| Physical iPad | iPad Pro 12.9" (6th gen), iPadOS 27.2.1: installs, launches, draws the title screen, music, touch input reaches the game |
+| Simulator | iOS 27 iPad Pro, iPad and iPad mini: touch, construction, settings, export and lifecycle tests pass |
+| Touch | Direct manipulation, tool-aware drags, precision loupe, 44 pt targets, safe cancellation |
+| Content | OpenGFX 8.0, OpenSFX 1.0.3, OpenMSX 0.4.2, TimGM6mb MIDI |
+| Files | Save import and ZIP export through Files and the share sheet |
+| Lifecycle | Scene-based launch, emergency background saves, state recovery |
+| Network | Verified HTTPS to OpenTTD's Online Content catalog |
+| Text | FreeType, HarfBuzz, ICU and CoreText fallback, including right-to-left scripts |
+| Not yet checked on hardware | A full touch-only game, Pencil, trackpad, keyboard, external display, Bluetooth audio, heat and long sessions |
 
 <details>
-<summary><strong>Reach small or exact targets</strong></summary>
+<summary><strong>Automated checks</strong></summary>
 
-Touch-only hit regions expand undersized controls to at least 44 points without
-changing their artwork. Touch and hold opens a 132-point precision loupe; move
-to aim, then lift to commit. Controls and hints can be placed for left- or
-right-handed reach.
-
-</details>
-
-Mouse, trackpad, software-keyboard, and hardware-keyboard events retain their
-native paths. Read the complete
-[touch interaction contract](docs/03-touch-interaction.md).
-
-## What works today
-
-| Area | Current state |
-|---|---|
-| Engine | Pinned OpenTTD 15.3; gameplay and save compatibility preserved |
-| App | Native arm64 Simulator and unsigned arm64 iPad device bundles |
-| Touch | Direct manipulation, tool-aware drags, precision mode, 44 pt targets, safe cancellation |
-| Content | OpenGFX 8.0, OpenSFX 1.0.3, OpenMSX 0.4.2, TimGM6mb MIDI |
-| Files | Save import and ZIP export through Files and share sheets |
-| Lifecycle | Scene-based launch, emergency background saves, state recovery |
-| Network | Verified HTTPS access to OpenTTD's Online Content catalog |
-| Text | FreeType, HarfBuzz, ICU, and CoreText fallback |
-| Layout | Landscape fullscreen on iPad Pro, iPad, and iPad mini |
-
-Original Transport Tycoon Deluxe graphics and sounds are never bundled. Players
-who own them may manage compatible content through OpenTTD's normal data paths.
-
-## Proof, not promises
-
-Last fully rerun on **2026-07-24**:
-
-| Layer | Proven result |
-|---|---:|
-| Untouched upstream macOS baseline | 96 / 96 |
-| Current host suite, excluding desktop game regressions | 111 / 111 |
-| OpenTTDPad-specific host scenarios | 17 / 17 |
-| Native XCTest UI matrix | 7 scenarios × 3 iPad classes = 21 / 21 |
-
-The UI matrix runs the exact current app on an iPad Pro 13-inch, base iPad, and
-iPad mini Simulator. It covers first-run coaching, continuous map and
-construction drags, Rail and Road tool selection, precision hold, cancellation,
-44-point controls, left/right placement, notices, save export, and lifecycle
-recovery.
+| Check | Result | Last run |
+|---|---:|---|
+| Untouched upstream macOS baseline | 96 / 96 | 2026-07-24 |
+| Host suite, excluding desktop game regressions | 111 / 111 | 2026-07-24 |
+| OpenTTDPad host scenarios | 17 / 17 | 2026-07-24 |
+| XCTest UI matrix on iOS 27.0 (7 scenarios × 3 iPad classes) | 21 / 21 | 2026-11-15 |
 
 ```sh
 cmake -S engine -B build/macos -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build/macos --parallel 8
-ctest --test-dir build/macos --output-on-failure \
-  --exclude-regex '^regression_' --timeout 300
-
+ctest --test-dir build/macos --output-on-failure --exclude-regex '^regression_' --timeout 300
 ./scripts/test-simulator-ui.sh
 ./scripts/verify-release.sh
 ```
 
-<details>
-<summary><strong>What Simulator evidence does not prove</strong></summary>
-
-Simulator automation cannot validate physical multitouch arbitration, Pencil
-or pointer feel, real speaker and Bluetooth routes, battery and thermal
-behavior, real-device lifecycle reliability, Apple signing, or App Store
-distribution. Those claims stay open until they are demonstrated on hardware.
+Simulator automation cannot prove multitouch feel, Pencil or pointer feel,
+audio routes, heat, real lifecycle reliability or signing. Those claims stay
+open until they are shown on hardware and recorded in
+[`docs/STATUS.md`](docs/STATUS.md).
 
 </details>
 
-The complete command log, result-bundle paths, screenshots, and known limits
-live in [`docs/STATUS.md`](docs/STATUS.md).
+## A look around
 
-## Release track
+<table>
+  <tr>
+    <td width="50%"><img src="docs/readme/online-content.png" alt="OpenTTD Online Content catalog running in OpenTTDPad"></td>
+    <td width="50%"><img src="docs/readme/international-text.png" alt="OpenTTDPad rendering an Arabic right-to-left interface"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Online Content</strong><br>Verified HTTPS catalog access</td>
+    <td align="center"><strong>International text</strong><br>HarfBuzz, ICU and CoreText fallback</td>
+  </tr>
+</table>
 
-| Milestone | State | Exit condition |
-|---|---|---|
-| Public source preview | **Ready** | Publish this tree with its source, notices, build scripts, and honest beta label |
-| Simulator beta | **Passed** | Native build, launch, host suite, and 21/21 UI matrix |
-| Unsigned device candidate | **Built, install unverified** | Sign and install the exact artifact on hardware |
-| Physical iPad beta | **Open** | Required device/input/lifecycle/audio/performance checks pass |
-| Public 1.0 | **Not ready** | EXP-10 usability, required device matrix, licensing review, and all G5 metrics pass |
+## Frequently asked questions
 
-This repository is ready to be shown publicly **as source and a Simulator
-beta**. It is not yet ready to promise a polished physical-iPad release.
+### Do I need the original Transport Tycoon Deluxe?
 
-## The last mile: a physical iPad
+No. OpenTTDPad ships the free OpenGFX graphics, OpenSFX sounds and OpenMSX music,
+so a new game works offline straight away. If you own the original game you can
+add its data through OpenTTD's normal data folders; it is never bundled here.
 
-When an iPad is available, the first hardware pass should be narrow and
-evidence-led:
+### Can I download a ready-made app?
 
-- [ ] Sign and install the exact unsigned device candidate.
-- [ ] Launch offline; create a map; save; force-quit; reopen and load.
-- [ ] Build a road route and a rail route using touch only.
-- [ ] Check pinch, two-finger pan/tap, precision hold, Cancel, and simultaneous
-  touches for feel and accidental actions.
-- [ ] Test Pencil, mouse/trackpad, wheel, hardware keyboard, and software text
-  entry.
-- [ ] Run ten background/foreground cycles, then verify the save again.
-- [ ] Check speakers, headphones/Bluetooth, interruption recovery, heat, and
-  sustained performance.
-- [ ] Export the iPad save and open it in desktop OpenTTD.
+Not yet. Build the IPA with the commands above and sign it yourself. A published
+preview will be announced in this README and on the releases page.
 
-The exact acceptance cases are in the
-[testing plan](docs/10-testing.md). Record device model, iPadOS version,
-observed behavior, logs, and screenshots in
-[`docs/STATUS.md`](docs/STATUS.md); do not convert a partial pass into a full
-hardware claim.
+### Are my saves compatible with desktop OpenTTD?
 
-## Repository guide
+Yes. The save format is OpenTTD 15.3's. Export saves through Files or the share
+sheet and open them in desktop OpenTTD 15.3, or import desktop saves the same way.
+
+### Does it run on iPhone?
+
+No. OpenTTDPad targets iPad only, in landscape.
+
+### Does multiplayer work?
+
+OpenTTD's multiplayer code is unchanged, and Online Content downloads work over
+verified HTTPS. Joining or hosting a network game from an iPad has not been
+tested yet.
+
+### Is this an official OpenTTD release?
+
+No. OpenTTDPad is an independent community port. Report iPad-specific problems
+here; report gameplay bugs that also happen on desktop to
+[OpenTTD](https://github.com/OpenTTD/OpenTTD/issues).
+
+## Project map
 
 | Path | Purpose |
 |---|---|
-| `engine/` | Pinned OpenTTD engine plus isolated iOS and touch changes |
-| `os/ios/` | App metadata, brand color, and downstream app icon |
-| `scripts/` | Bootstrap, build, package, launch, test, and release checks |
+| `engine/` | Pinned OpenTTD 15.3 plus isolated iOS and touch changes |
+| `engine/src/os/ios/` | Scene delegate, overlays, Files, haptics and settings |
+| `engine/src/touch/` | Platform-neutral gesture recognizer and hit targets |
+| `os/ios/` | App metadata, brand colour and app icon |
+| `patches/` | Reproducible patches to pinned SDL sources |
+| `scripts/` | Bootstrap, build, package, launch, test and release checks |
 | `tests/ios-ui/` | Native XCTest UI scenarios |
-| `patches/` | Reproducible patches to pinned third-party sources |
-| `docs/` | Requirements, architecture, controls, evidence, and status |
-| `ref/` | Gitignored sources, archives, and local game files |
+| `docs/` | Requirements, architecture, controls, evidence and status |
+| `ref/` | Gitignored downloaded sources, archives and content |
 
-<details>
-<summary><strong>Open the documentation map</strong></summary>
-
-- [Documentation index](docs/README.md)
-- [Architecture](docs/02-architecture.md)
-- [Touch interaction](docs/03-touch-interaction.md)
-- [Pointer and keyboard](docs/04-pointer-keyboard.md)
-- [Build and CI](docs/07-build-and-ci.md)
-- [Roadmap and release gates](docs/09-roadmap.md)
-- [Testing plan](docs/10-testing.md)
-- [Licensing and distribution](docs/11-licensing-distribution.md)
-- [Implementation status](docs/STATUS.md)
-- [Downstream patch log](docs/PATCHES.md)
-
-</details>
+Start with the [architecture](docs/02-architecture.md), the
+[downstream patch log](docs/PATCHES.md) and the
+[implementation status](docs/STATUS.md).
 
 ## Contributing
 
-Keep changes narrow, preserve upstream gameplay and save behavior, add
+Keep changes narrow, preserve upstream gameplay and save behaviour, add
 deterministic coverage for gesture boundaries, record edits to inherited
 upstream files in [`docs/PATCHES.md`](docs/PATCHES.md), and never commit
-downloaded sources or game data from `ref/`.
-
-Useful contributions include physical-device test evidence, accessibility
-review, documentation fixes, reproducible bug reports, touch boundary tests,
-and small upstream-friendly platform patches.
+downloaded sources or game data from `ref/`. The most useful contributions
+right now are physical-iPad test reports: device model, iPadOS version, what you
+did, what happened, and a screenshot or log.
 
 ## License and identity
 
 OpenTTDPad and the OpenTTD engine are distributed under the
 [GNU General Public License version 2](LICENSE). Bundled content and libraries
-retain their own compatible licenses, recorded in
+keep their own compatible licenses, recorded in
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and the
 [distribution audit](docs/11-licensing-distribution.md).
 

@@ -29,7 +29,7 @@ jobs:
           xcrun simctl boot "$device" || true
           xcrun simctl bootstatus "$device" -b
           xcrun simctl install "$device" build/ios-sim/openttd.app
-          xcrun simctl launch "$device" org.openttd.OpenTTDPad -g -G 1
+          xcrun simctl launch "$device" com.chrissotraidis.openttdpad -g -G 1
           sleep 5
           xcrun simctl io "$device" screenshot build/ci-first-frame.png
       - uses: actions/upload-artifact@v4

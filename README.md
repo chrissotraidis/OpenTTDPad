@@ -19,7 +19,8 @@
   <img alt="Free OpenGFX, OpenSFX and OpenMSX included" src="https://img.shields.io/badge/content-OpenGFX%20%C2%B7%20OpenSFX%20%C2%B7%20OpenMSX-3EB489">
   <img alt="Original TTD data not required" src="https://img.shields.io/badge/original%20TTD%20data-not%20required-8E8E93">
   <a href="LICENSE"><img alt="License: GPLv2" src="https://img.shields.io/badge/license-GPLv2-8E8E93"></a>
-  <img alt="Status: preview" src="https://img.shields.io/badge/status-preview-FF9F0A">
+  <a href="https://github.com/chrissotraidis/OpenTTDPad/releases/tag/v0.2.0"><img alt="Release 0.2.0 preview" src="https://img.shields.io/badge/release-0.2.0%20preview-FF9F0A"></a>
+  <a href="https://github.com/chrissotraidis/padmint"><img alt="Build with PadMint" src="https://img.shields.io/badge/PadMint-build%20your%20own-3EB489"></a>
   <a href="https://discord.gg/xwHfUD2bxW"><img alt="Join the community on Discord" src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&amp;logoColor=white"></a>
 </p>
 
@@ -50,13 +51,15 @@ actually been checked. This describes OpenTTDPad's workflow, not the authorship
 of OpenTTD or its other upstream projects.
 
 > [!IMPORTANT]
-> **OpenTTDPad is a preview. There is no published download yet; build and sign
-> your own copy on a Mac.** On 2026-11-15 the current build was signed, installed
-> over an existing copy and launched on a physical iPad Pro 12.9-inch (6th
-> generation) running iPadOS 27.2.1. It drew the OpenTTD 15.3 title screen and
-> menu at full screen, played music and responded to touch. A full touch-only
-> game, Pencil, trackpad, keyboard, external displays and long sessions have not
-> yet been checked on hardware. See [Current status](#current-status).
+> **0.2.0 is the first public preview.** [Download the unsigned IPA](https://github.com/chrissotraidis/OpenTTDPad/releases/tag/v0.2.0)
+> and sign it yourself, build it with [PadMint](https://github.com/chrissotraidis/padmint),
+> or build from source. The build was installed over an existing copy and
+> launched on a physical iPad Pro 12.9-inch (6th generation) running iPadOS
+> 27.2.1: it drew the OpenTTD 15.3 title screen and menu at full screen, played
+> music and responded to touch. A full touch-only game, Pencil, trackpad,
+> keyboard, external displays and long sessions have not yet been checked on
+> hardware. See [Current status](#current-status) and the
+> [0.2.0 release notes](docs/releases/v0.2.0.md).
 
 ## What's new: iPadOS 27 and external displays
 
@@ -76,13 +79,42 @@ backport as the other Pad ports
 
 ## Get OpenTTDPad
 
-You need an Apple Silicon Mac with Xcode and an iPadOS SDK, CMake, Ninja, Git,
-curl and unzip, plus about 10 GB of free space. The bootstrap downloads pinned,
-freely redistributable sources and content; nothing from the original Transport
-Tycoon Deluxe is downloaded or bundled.
+OpenTTDPad needs an iPad on iPadOS 17 or later. Nothing else is required to play:
+the free OpenGFX, OpenSFX and OpenMSX content is built in, and no original
+Transport Tycoon Deluxe data is downloaded or bundled.
+
+Install updates over the existing app. Deleting OpenTTDPad first also deletes
+its saves, settings and downloaded content; export saves from the options menu
+first if you must reinstall. The install needs about 65 MB of free space.
 
 <details open>
-<summary><strong>Build for a real iPad</strong></summary>
+<summary><strong>Download the unsigned IPA</strong></summary>
+
+Download `OpenTTDPad-unsigned.ipa` from the
+[0.2.0 release](https://github.com/chrissotraidis/OpenTTDPad/releases/tag/v0.2.0),
+check it against `SHA256SUMS`, and sign it with your own Apple ID or developer
+account using Xcode, `devicectl` or your usual sideloading tool. The release
+also carries the complete corresponding source required by the GPL.
+
+</details>
+
+<details>
+<summary><strong>Build it with PadMint</strong></summary>
+
+On an Apple Silicon Mac with Xcode 26 or newer and its iOS platform, choose
+**OpenTTDPad** in [PadMint](https://github.com/chrissotraidis/padmint). PadMint
+fetches this repository's release, builds the app with the recipe in
+[`padmint.json`](padmint.json) and checks the result. There is no game file to
+choose. Plan for about 4 GB of free space on the Mac while it builds.
+
+</details>
+
+<details>
+<summary><strong>Build from source for a real iPad</strong></summary>
+
+You need an Apple Silicon Mac with Xcode and an iPadOS SDK, CMake, Ninja, Git,
+curl and unzip, plus about 10 GB of free space. The bootstrap downloads pinned,
+freely redistributable sources and content.
 
 ```sh
 git clone https://github.com/chrissotraidis/OpenTTDPad.git
@@ -98,10 +130,6 @@ The output is `build/artifacts/OpenTTDPad-unsigned.ipa` (the app bundle is
 identity and provisioning profile, then install it with Xcode, `devicectl` or
 your usual sideloading tool. No credentials or signed binaries are stored in this
 repository.
-
-Install updates over the existing app. Deleting OpenTTDPad first also deletes
-its saves, settings and downloaded content; export saves from the app first if
-you must reinstall. The install needs roughly 65 MB of free space on the iPad.
 
 </details>
 
@@ -218,8 +246,10 @@ add its data through OpenTTD's normal data folders; it is never bundled here.
 
 ### Can I download a ready-made app?
 
-Not yet. Build the IPA with the commands above and sign it yourself. A published
-preview will be announced in this README and on the releases page.
+Yes, as an unsigned IPA on the [releases page](https://github.com/chrissotraidis/OpenTTDPad/releases).
+iPadOS only installs apps signed for your device, so sign it with your own Apple
+ID or developer account, or let PadMint build a copy for you. There is no App
+Store version.
 
 ### Are my saves compatible with desktop OpenTTD?
 
@@ -253,7 +283,8 @@ here; report gameplay bugs that also happen on desktop to
 | `patches/` | Reproducible patches to pinned SDL sources |
 | `scripts/` | Bootstrap, build, package, launch, test and release checks |
 | `tests/ios-ui/` | Native XCTest UI scenarios |
-| `docs/` | Requirements, architecture, controls, evidence and status |
+| `docs/` | Requirements, architecture, controls, evidence, status and [release notes](docs/releases/) |
+| `padmint.json` | PadMint build recipe |
 | `ref/` | Gitignored downloaded sources, archives and content |
 
 Start with the [architecture](docs/02-architecture.md), the

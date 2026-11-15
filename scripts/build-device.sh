@@ -15,14 +15,14 @@ device_build="$repo_root/build/ios-device"
 
 cmake -S "$repo_root/engine" -B "$host_build" -G Ninja \
     -DOPTION_TOOLS_ONLY=ON -DCMAKE_BUILD_TYPE=Release
-cmake --build "$host_build" --target tools --parallel 8
+cmake --build "$host_build" --target tools --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-8}"
 
 cmake -S "$repo_root/ref/SDL2" -B "$sdl_build" -G Ninja \
     -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos \
     -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$device_prefix" \
     -DSDL_SHARED=OFF -DSDL_STATIC=ON -DSDL_TEST=OFF
-cmake --build "$sdl_build" --target install --parallel 8
+cmake --build "$sdl_build" --target install --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-8}"
 
 cmake -S "$repo_root/ref/xz" -B "$xz_build" -G Ninja \
     -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos \
@@ -31,7 +31,7 @@ cmake -S "$repo_root/ref/xz" -B "$xz_build" -G Ninja \
     -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DXZ_NLS=OFF \
     -DXZ_TOOL_XZ=OFF -DXZ_TOOL_XZDEC=OFF -DXZ_TOOL_LZMADEC=OFF \
     -DXZ_TOOL_LZMAINFO=OFF
-cmake --build "$xz_build" --target install --parallel 8
+cmake --build "$xz_build" --target install --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-8}"
 
 cmake -S "$repo_root/ref/libpng" -B "$png_build" -G Ninja \
     -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos \
@@ -39,7 +39,7 @@ cmake -S "$repo_root/ref/libpng" -B "$png_build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$device_prefix" \
     -DPNG_SHARED=OFF -DPNG_STATIC=ON -DPNG_FRAMEWORK=OFF \
     -DPNG_TESTS=OFF -DPNG_TOOLS=OFF
-cmake --build "$png_build" --target install --parallel 8
+cmake --build "$png_build" --target install --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-8}"
 
 cmake -S "$repo_root/ref/freetype" -B "$freetype_build" -G Ninja \
     -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos \
@@ -47,7 +47,7 @@ cmake -S "$repo_root/ref/freetype" -B "$freetype_build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$device_prefix" \
     -DFT_DISABLE_BROTLI=ON -DFT_DISABLE_BZIP2=ON \
     -DFT_DISABLE_HARFBUZZ=ON -DFT_DISABLE_PNG=ON -DFT_DISABLE_ZLIB=ON
-cmake --build "$freetype_build" --target install --parallel 8
+cmake --build "$freetype_build" --target install --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-8}"
 
 cmake -S "$repo_root/ref/harfbuzz" -B "$harfbuzz_build" -G Ninja \
     -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos \
@@ -60,7 +60,7 @@ cmake -S "$repo_root/ref/harfbuzz" -B "$harfbuzz_build" -G Ninja \
     -DHB_HAVE_FREETYPE=ON -DHB_HAVE_CORETEXT=OFF -DHB_HAVE_ICU=OFF \
     -DHB_BUILD_SUBSET=OFF -DHB_BUILD_UTILS=OFF -DHB_BUILD_RASTER=OFF \
     -DHB_BUILD_VECTOR=OFF -DHB_BUILD_GPU=OFF
-cmake --build "$harfbuzz_build" --target install --parallel 8
+cmake --build "$harfbuzz_build" --target install --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-8}"
 
 cmake -S "$repo_root/ref/mbedtls" -B "$mbedtls_build" -G Ninja \
     -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos \
@@ -68,7 +68,7 @@ cmake -S "$repo_root/ref/mbedtls" -B "$mbedtls_build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$device_prefix" \
     -DENABLE_PROGRAMS=OFF -DENABLE_TESTING=OFF \
     -DUSE_SHARED_MBEDTLS_LIBRARY=OFF -DUSE_STATIC_MBEDTLS_LIBRARY=ON
-cmake --build "$mbedtls_build" --target install --parallel 8
+cmake --build "$mbedtls_build" --target install --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-8}"
 
 cmake -S "$repo_root/ref/curl" -B "$curl_build" -G Ninja \
     -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos \
@@ -87,7 +87,7 @@ cmake -S "$repo_root/ref/curl" -B "$curl_build" -G Ninja \
     -DCURL_DISABLE_GOPHER=ON -DCURL_DISABLE_IMAP=ON -DCURL_DISABLE_MQTT=ON \
     -DCURL_DISABLE_POP3=ON -DCURL_DISABLE_RTSP=ON -DCURL_DISABLE_SMB=ON \
     -DCURL_DISABLE_SMTP=ON -DCURL_DISABLE_TELNET=ON -DCURL_DISABLE_TFTP=ON
-cmake --build "$curl_build" --target install --parallel 8
+cmake --build "$curl_build" --target install --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-8}"
 
 cmake -S "$repo_root/engine" -B "$device_build" -G Ninja \
     -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos \
@@ -110,7 +110,7 @@ cmake -S "$repo_root/engine" -B "$device_build" -G Ninja \
     -DCURL_LIBRARY="$device_prefix/lib/libcurl.a" \
     -DOPENTTDPAD_MBEDTLS_LIBRARIES="$device_prefix/lib/libmbedtls.a;$device_prefix/lib/libmbedx509.a;$device_prefix/lib/libmbedcrypto.a" \
     -DOPTION_USE_ASSERTS=ON
-cmake --build "$device_build" --target openttd --parallel 8
+cmake --build "$device_build" --target openttd --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-8}"
 
 "$repo_root/scripts/package-device.sh"
 

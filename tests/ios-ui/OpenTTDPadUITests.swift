@@ -1,7 +1,7 @@
 import XCTest
 
 final class OpenTTDPadUITests: XCTestCase {
-    private let bundleIdentifier = "org.openttd.OpenTTDPad"
+    private let bundleIdentifier = "com.chrissotraidis.openttdpad"
 
     private func attachScreenshot(_ name: String) {
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())

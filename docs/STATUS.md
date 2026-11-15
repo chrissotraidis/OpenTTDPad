@@ -2,6 +2,24 @@
 
 Updated: **2026-11-15**
 
+## 2026-11-16: 0.2.0 release candidate (unpublished)
+
+- Version 0.2.0 (build 2), bundle ID `com.chrissotraidis.openttdpad`. The
+  repository stays private and nothing is published; the draft release and the
+  PadMint catalog entry (chrissotraidis/padmint#276) wait for the owner.
+- `build-device.sh`, `package-ipa.sh`, `package-source-release.sh` and
+  `verify-release.sh` pass. `python3 -m padmint audit` and the private release
+  gate pass the IPA, the corresponding-source zip and the downstream patch with
+  zero findings.
+- PadMint player check (`scripts/player-check.sh openttdpad ios - <checkout>`,
+  PadMint main plus the catalog entry): Apple Python 3.9, empty PadMint folder,
+  completed in about 7 minutes using 2.1 GB, gate PASS, launch link
+  `padmint-openttdpad`, scene startup declared.
+- The signed release-candidate IPA installed on the iPad Pro 12.9-inch (6th
+  generation, iPadOS 27.2.1) as a new app beside the old test copy, launched,
+  and UIKit evaluated the game's SDL window as the key window (the broken build
+  reported none).
+
 ## 2026-11-15: iPadOS 27 black screen fixed on hardware
 
 - Device: iPad Pro 12.9-inch (6th generation, `iPad14,5`), iPadOS 27.2.1.

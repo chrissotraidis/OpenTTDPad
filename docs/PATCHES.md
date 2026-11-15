@@ -50,6 +50,16 @@ Pinned dependency patch:
   The patch keeps the existing controller and attaches its replacement SDL view
   directly; native presentation and finger routing are covered by XCTest.
   Bootstrap applies it idempotently and both iOS dependency builds consume it.
+- `patches/sdl2-ios-scenes.patch` — the SDL 2.32.10 UIKit scene backport
+  shared with the other Pad ports (chrissotraidis/SDL
+  `pads/2.32.10-uikit-scenes`, including the window-ownership fix). SDL starts
+  only after the application scene connects, creates its window on that scene,
+  refits the window when the scene rotates, resizes or moves to another display,
+  hands the window to a replacement scene, and reads orientation from the scene.
+  Without it, an iPadOS 27 device showed a black screen while the game ran. The
+  OpenTTDPad copy omits SDL's `configurationForConnectingSceneSession` so
+  Info.plist keeps naming `OpenTTDPadSceneDelegate`, which subclasses
+  `SDLUIKitSceneDelegate` and inherits its startup and geometry handling.
 
 Prime directive check: no abandoned iOS fork code was copied. The platform
 bridge and gesture state machine are original downstream implementations over

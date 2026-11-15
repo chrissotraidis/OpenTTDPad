@@ -19,7 +19,7 @@ jobs:
       - name: Check whitespace
         run: |
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            git diff --check "origin/$GITHUB_BASE_REF...HEAD" -- . ':(exclude)engine/**'
+            git diff --check "origin/$GITHUB_BASE_REF...HEAD" -- . ':(exclude)engine/**' ':(exclude)patches/**'
           else
-            git diff --check HEAD^..HEAD -- . ':(exclude)engine/**'
+            git diff --check HEAD^..HEAD -- . ':(exclude)engine/**' ':(exclude)patches/**'
           fi

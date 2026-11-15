@@ -11,8 +11,12 @@ final class OpenTTDPadUITests: XCTestCase {
     }
 
     private func launchGame(environment: [String: String] = [:]) -> XCUIApplication {
+        /* OpenTTDPad is landscape-only. Newer Simulators otherwise report
+         * element frames in the device's portrait coordinates. */
+        XCUIDevice.shared.orientation = .landscapeLeft
         let app = XCUIApplication(bundleIdentifier: bundleIdentifier)
-        app.launchArguments = ["-g", "-G", "1"]
+        /* Null music and sound drivers keep automated runs silent. */
+        app.launchArguments = ["-g", "-G", "1", "-m", "null", "-s", "null"]
         app.launchEnvironment = ["OPENTTDPAD_SKIP_HINTS": "1"].merging(environment) { _, requested in requested }
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 8))
@@ -23,7 +27,7 @@ final class OpenTTDPadUITests: XCTestCase {
     private func constructionToolbarShift(for surface: XCUIElement) -> CGFloat {
         /* The upstream toolbar centers its fixed-size icon group on the wide
          * Pro canvas; base and mini layouts keep the compact origin. */
-        return surface.frame.width > 900 ? 0.042 : 0
+        return min(surface.frame.width, surface.frame.height) > 900 ? 0.042 : 0
     }
 
     func testFirstRunTouchCoachIsDismissibleAndNonBlocking() {
@@ -118,13 +122,13 @@ final class OpenTTDPadUITests: XCTestCase {
         let surface = app.windows.firstMatch
         XCTAssertTrue(surface.waitForExistence(timeout: 5))
 
-        let toolbarShift: CGFloat = surface.frame.width > 900 ? 0.031 : 0
+        let toolbarShift: CGFloat = min(surface.frame.width, surface.frame.height) > 900 ? 0.031 : 0
         surface.coordinate(withNormalizedOffset: CGVector(dx: 0.727 + toolbarShift, dy: 0.025)).tap()
         let menu = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         menu.name = "Road toolbar menu opened by touch"
         menu.lifetime = .keepAlways
         add(menu)
-        let menuY: CGFloat = surface.frame.width > 900 ? 0.055 : 0.065
+        let menuY: CGFloat = min(surface.frame.width, surface.frame.height) > 900 ? 0.055 : 0.065
         surface.coordinate(withNormalizedOffset: CGVector(dx: 0.84, dy: menuY)).tap()
         sleep(1)
         let opened = XCTAttachment(screenshot: XCUIScreen.main.screenshot())

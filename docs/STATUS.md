@@ -1,6 +1,35 @@
 # Implementation status
 
-Updated: **2026-07-26**
+Updated: **2026-11-15**
+
+## 2026-11-15: iPadOS 27 black screen fixed on hardware
+
+- Device: iPad Pro 12.9-inch (6th generation, `iPad14,5`), iPadOS 27.2.1.
+  Build host: Xcode 27.2, iPhoneOS SDK 27.2.
+- Symptom: the July build (0.1.0 build 1, SDK 26.5) launched to a black screen.
+  The process stayed alive and started audio, but UIKit logged no key window
+  for the scene: SDL 2.32.10 created its window off-scene and iPadOS never
+  displayed it. The iPad was also full (`errno = 28` in the app log; 528 KB
+  free), which blocked installing updates until the owner freed space.
+- Fix: `patches/sdl2-ios-scenes.patch`, the SDL scene backport shared with the
+  other Pad ports, plus `OpenTTDPadSceneDelegate` subclassing
+  `SDLUIKitSceneDelegate`. Overlays now attach to SDL's game window rather
+  than the first visible window, because SDL's launch window shares the scene
+  until the first frame.
+- Result: signed with the team development profile, installed over the
+  existing app (data kept), launched. The title screen and main menu draw at
+  full screen, music plays, finger events reach the game, and the app stays
+  running with no crash report.
+- Simulator: the 7-scenario XCTest suite passed **21/21** on iOS 27.0
+  Simulators (iPad Pro 13-inch M5, iPad A16, iPad mini A17 Pro). The harness now
+  sets landscape before launch (newer Simulators otherwise report portrait
+  frames), measures the Pro layout by the short side, and runs with null music
+  and sound drivers so automated runs are silent.
+- Still open on hardware: a full touch-only game, save/force-quit/reload,
+  Pencil, trackpad, keyboard, external display and Stage Manager, Bluetooth
+  audio, heat and long sessions. iPadOS 27 also warns that
+  `UIRequiresFullScreen` will be ignored and all orientations will be
+  required in a future release.
 
 ## Environment
 

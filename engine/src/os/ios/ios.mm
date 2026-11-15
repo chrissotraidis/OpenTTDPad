@@ -19,6 +19,7 @@
 #include "../../safeguards.h"
 
 static UIWindowScene *OpenTTDPadActiveScene;
+static UIWindow *OpenTTDPadSDLWindow;
 static UIView *OpenTTDPadLoupe;
 static UIImageView *OpenTTDPadLoupeImage;
 static UIImage *OpenTTDPadLoupeSnapshot;
@@ -66,6 +67,9 @@ static UILabel *OpenTTDPadToolHint;
 
 static UIWindow *OpenTTDPadGameWindow()
 {
+	/* SDL's launch window shares the scene until the first frame, so prefer
+	 * the game's own window over the first visible one. */
+	if (OpenTTDPadSDLWindow != nil && OpenTTDPadSDLWindow.windowScene != nil) return OpenTTDPadSDLWindow;
 	UIWindowScene *scene = OpenTTDPadActiveScene;
 	for (UIWindow *window in scene.windows) {
 		if (!window.hidden && window.alpha > 0) return window;
@@ -102,20 +106,28 @@ static void OpenTTDPadPushLifecycleEvent(Uint32 type)
 	SDL_PushEvent(&event);
 }
 
-@interface OpenTTDPadSceneDelegate : UIResponder <UIWindowSceneDelegate>
+/* Provided by patches/sdl2-ios-scenes.patch. It starts SDL once the application
+ * scene connects, keeps SDL's window sized to that scene as it rotates, resizes
+ * or moves to another display, and hands the window to a replacement scene. */
+@interface SDLUIKitSceneDelegate : NSObject <UIWindowSceneDelegate>
+@end
+
+@interface OpenTTDPadSceneDelegate : SDLUIKitSceneDelegate
 @end
 
 @implementation OpenTTDPadSceneDelegate
 
 - (void)scene:(UIScene *)scene willConnectToSession:(UISceneSession *)session options:(UISceneConnectionOptions *)connectionOptions
 {
-	if ([scene isKindOfClass:[UIWindowScene class]]) {
-		OpenTTDPadActiveScene = (UIWindowScene *)scene;
-		OpenTTDPadRequestLandscape(OpenTTDPadActiveScene);
-		NSMutableArray<NSURL *> *urls = [NSMutableArray array];
-		for (UIOpenURLContext *context in connectionOptions.URLContexts) [urls addObject:context.URL];
-		if (urls.count != 0) OpenTTDPadHandleOpenURLs(urls);
-	}
+	if (![scene isKindOfClass:[UIWindowScene class]] ||
+		![session.role isEqualToString:UIWindowSceneSessionRoleApplication]) return;
+
+	OpenTTDPadActiveScene = (UIWindowScene *)scene;
+	OpenTTDPadRequestLandscape(OpenTTDPadActiveScene);
+	[super scene:scene willConnectToSession:session options:connectionOptions];
+	NSMutableArray<NSURL *> *urls = [NSMutableArray array];
+	for (UIOpenURLContext *context in connectionOptions.URLContexts) [urls addObject:context.URL];
+	if (urls.count != 0) OpenTTDPadHandleOpenURLs(urls);
 }
 
 - (void)scene:(UIScene *)scene openURLContexts:(NSSet<UIOpenURLContext *> *)URLContexts
@@ -127,6 +139,7 @@ static void OpenTTDPadPushLifecycleEvent(Uint32 type)
 
 - (void)sceneDidDisconnect:(UIScene *)scene
 {
+	[super sceneDidDisconnect:scene];
 	if (scene == OpenTTDPadActiveScene) OpenTTDPadActiveScene = nil;
 }
 
@@ -169,10 +182,11 @@ extern "C" void OpenTTDPadAttachSDLWindowToScene(SDL_Window *window)
 			}
 		}
 	}
-	if (scene != nil) {
-		info.info.uikit.window.windowScene = scene;
-		OpenTTDPadRequestLandscape(scene);
-	}
+	/* SDL normally creates its window on the owning scene already. */
+	UIWindow *window_ui = info.info.uikit.window;
+	OpenTTDPadSDLWindow = window_ui;
+	if (window_ui.windowScene == nil && scene != nil) window_ui.windowScene = scene;
+	if (window_ui.windowScene != nil) OpenTTDPadRequestLandscape(window_ui.windowScene);
 	OpenTTDPadEnsureOptionsButton();
 }
 

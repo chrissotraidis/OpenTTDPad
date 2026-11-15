@@ -32,8 +32,10 @@ for component in SDL2 xz libpng curl mbedtls freetype harfbuzz icu OpenGFX OpenS
     (
         cd "$repo_root/ref"
         # Upstream test data that the release build never uses: xz's
-        # deliberately corrupt archives and mbedtls's suite vectors.
-        tar --exclude='.git' --exclude='build*' \
+        # deliberately corrupt archives and mbedtls's suite vectors. Builds
+        # happen under build/, never in ref/, so upstream folders such as
+        # FreeType's builds/ and xz's build-aux/ are source and stay.
+        tar --exclude='.git' \
             --exclude='xz/tests/files' --exclude='mbedtls/tests/suites/*.data' \
             -cf - "$component"
     ) | (

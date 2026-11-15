@@ -82,7 +82,7 @@ download "$game_dir/openmsx-0.4.2-all.zip" \
 download "$ref_dir/mbedtls-3.6.6.tar.bz2" \
     https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.6/mbedtls-3.6.6.tar.bz2
 download "$game_dir/cacert-2026-07-16.pem" \
-    https://curl.se/ca/cacert.pem
+    https://curl.se/ca/cacert-2026-07-16.pem
 download "$game_dir/MPL-2.0.txt" \
     https://www.mozilla.org/media/MPL/2.0/index.815ca599c9df.txt
 download "$game_dir/timgm6mb-soundfont_1.3.orig.tar.gz" \

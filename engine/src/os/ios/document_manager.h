@@ -16,6 +16,9 @@
 
 extern "C" void OpenTTDPadEnsureOptionsButton();
 extern "C" void OpenTTDPadRefreshControlPlacement();
+/** The engine's toolbar bottom and status-bar top in game coordinates (0 when absent). */
+extern "C" void OpenTTDPadSetChromeEdges(int toolbar_bottom, int status_top);
+extern "C" void OpenTTDPadChromeEdges(double *toolbar_bottom, double *status_top);
 extern "C" bool OpenTTDPadControlsLeftHanded();
 extern "C" void OpenTTDPadSetConstructionPalette(int transport_type);
 extern "C" uint64_t OpenTTDPadTouchSettingsGeneration();

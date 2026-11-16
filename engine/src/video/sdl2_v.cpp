@@ -36,6 +36,35 @@ extern "C" void OpenTTDPadPrecisionLoupe(bool visible, double x, double y, doubl
 extern "C" void OpenTTDPadMaybeShowTouchHint();
 extern "C" void OpenTTDPadSetToolOverlay(bool active);
 extern "C" void OpenTTDPadSetConstructionPalette(int transport_type);
+extern "C" void OpenTTDPadSetChromeEdges(int toolbar_bottom, int status_top);
+extern "C" bool OpenTTDPadControlsLeftHanded();
+
+/**
+ * Where the options button may sit: under the main toolbar, or under any game
+ * window docked in that corner (a construction toolbar, for example), so the
+ * button never covers a game control.
+ */
+static int OpenTTDPadOptionsLaneTop(int toolbar_bottom, int status_top)
+{
+	constexpr int lane = 64;
+	const int lane_left = OpenTTDPadControlsLeftHanded() ? 0 : _screen.width - lane;
+	int top = toolbar_bottom;
+	for (int pass = 0; pass < 4; pass++) {
+		bool moved = false;
+		for (const Window *w : Window::Iterate()) {
+			if (w->window_class == WC_MAIN_WINDOW || w->window_class == WC_MAIN_TOOLBAR ||
+					w->window_class == WC_STATUS_BAR || w->window_class == WC_TOOLTIPS) continue;
+			if (w->left >= lane_left + lane || w->left + w->width <= lane_left) continue;
+			if (w->top >= top + lane || w->top + w->height <= top) continue;
+			top = w->top + w->height;
+			moved = true;
+		}
+		if (!moved) break;
+	}
+	/* A tall window down that side: stay under the toolbar rather than at the bottom. */
+	if (status_top > 0 && top > status_top - 2 * lane) return toolbar_bottom;
+	return top;
+}
 extern "C" uint64_t OpenTTDPadTouchSettingsGeneration();
 extern "C" void OpenTTDPadLoadTouchSettings(double *threshold_scale, uint32_t *long_press_ms,
 	bool *expanded_targets, bool *momentum);
@@ -741,6 +770,12 @@ bool VideoDriver_SDL_Base::PollEvent()
 	const int construction_transport = construction_palette != nullptr ?
 		static_cast<int>(construction_palette->window_number) : -1;
 	OpenTTDPadSetConstructionPalette(construction_transport);
+	/* UIKit controls sit just inside the game's own toolbar and status bar. */
+	const Window *main_toolbar = FindWindowByClass(WC_MAIN_TOOLBAR);
+	const Window *status_bar = FindWindowByClass(WC_STATUS_BAR);
+	const int status_top = status_bar != nullptr ? status_bar->top : 0;
+	OpenTTDPadSetChromeEdges(OpenTTDPadOptionsLaneTop(
+		main_toolbar != nullptr ? main_toolbar->top + main_toolbar->height : 0, status_top), status_top);
 	auto timed_actions = _openttdpad_gestures.Update(SDL_GetTicks());
 	if (!timed_actions.empty()) {
 		OpenTTDPadApplyTouchActions(timed_actions);

@@ -24,9 +24,10 @@ purpose and normal review.
 | `engine/src/toolbar_gui.cpp` | Omit desktop-only Exit-program entries from the iPad save/load menus | downstream | not filed |
 | `engine/src/intro_gui.cpp` | Omit the desktop Exit-program control from the iPad title screen | downstream | not filed |
 | `engine/src/video/cocoa/CMakeLists.txt` | Exclude Cocoa renderer/window sources on iOS | downstream | not filed |
-| `engine/src/video/sdl2_v.cpp` | Attach SDL to the active scene; force iPad fullscreen; separate finger/mouse sources; show the touch cursor without desktop hover tooltips; directly pan and zoom the viewport; probe and translate gestures | downstream | not filed |
+| `engine/src/video/sdl2_v.cpp` | Attach SDL to the active scene; force iPad fullscreen; separate finger/mouse sources; show the touch cursor without desktop hover tooltips; directly pan and zoom the viewport; probe and translate gestures; report the toolbar and status-bar edges so UIKit controls sit beside them | downstream | not filed |
 | `engine/src/window.cpp`, `engine/src/window_gui.h` | Suppress desktop hover timing while the visible cursor is owned by direct touch; restore it for genuine mouse movement | downstream | not filed |
 | `engine/src/network/core/http_curl.cpp` | Resolve the packaged Mozilla CA bundle before Unix host paths so iPad HTTPS retains peer verification | downstream | not filed |
+| `engine/src/os/unix/crashlog_unix.cpp` | Record a stack trace in crash logs on iOS, which provides `execinfo` like glibc | downstream | not filed |
 
 New downstream source surfaces:
 

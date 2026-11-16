@@ -15,7 +15,6 @@ namespace OpenTTDPad::Touch {
 
 struct Settings {
 	double tap_slop = 8.0;
-	uint32_t tap_max_ms = 300;
 	uint32_t double_tap_ms = 250;
 	double double_tap_slop = 24.0;
 	uint32_t long_press_ms = 500;

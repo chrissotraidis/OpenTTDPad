@@ -289,7 +289,6 @@ std::vector<Action> GestureState::FingerUp(int64_t id, TouchPoint position, uint
 	if (finger == nullptr) return {};
 	finger->current = position;
 	const TouchPoint start = finger->start;
-	const uint32_t down_ms = finger->down_ms;
 	const State ending_state = this->state;
 	const double max_movement = this->MaxMovement();
 	if (ending_state == State::TwoFingerPending && max_movement > this->settings.tap_slop) {
@@ -299,10 +298,11 @@ std::vector<Action> GestureState::FingerUp(int64_t id, TouchPoint position, uint
 
 	if (ending_state == State::Pending) {
 		this->state = State::Idle;
-		if (timestamp_ms - down_ms <= this->settings.tap_max_ms && Distance(start, position) <= this->settings.tap_slop) {
-			return this->EmitTap(position, timestamp_ms);
-		}
-		return {};
+		/* Still pending means the finger never moved far enough to start a
+		 * drag and precision never began, so this is a tap however long it
+		 * was held. Click where the finger landed: lifting rolls the contact
+		 * point a few points off small targets such as close boxes. */
+		return this->EmitTap(start, timestamp_ms);
 	}
 
 	if (ending_state == State::OneFingerSuppressed) {

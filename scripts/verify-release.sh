@@ -33,11 +33,10 @@ for required in \
     fi
 done
 
-icon_metadata=$(sips -g pixelWidth -g pixelHeight -g hasAlpha \
-    "$repo_root/os/ios/AppIcon.png" 2>/dev/null || true)
-if ! printf '%s\n' "$icon_metadata" | grep -q 'pixelWidth: 1024' ||
-    ! printf '%s\n' "$icon_metadata" | grep -q 'pixelHeight: 1024' ||
-    ! printf '%s\n' "$icon_metadata" | grep -q 'hasAlpha: no'; then
+# file(1) is on macOS and Linux CI alike; RGB without A means opaque.
+icon_metadata=$(file "$repo_root/os/ios/AppIcon.png")
+if ! printf '%s\n' "$icon_metadata" | grep -q '1024 x 1024' ||
+    ! printf '%s\n' "$icon_metadata" | grep -q 'color RGB,'; then
     fail "app icon must be an opaque 1024 x 1024 PNG"
 fi
 

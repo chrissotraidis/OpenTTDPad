@@ -1,5 +1,10 @@
 # OpenTTD for iPadOS — PRD Documentation Suite
 
+> These are the original planning documents from July 2026. For the shipped
+> app start with the [project README](../README.md); current state is in
+> [STATUS.md](STATUS.md), release notes in [releases/](releases/), and the
+> release process in [RELEASING.md](RELEASING.md).
+
 **Product name:** OpenTTD for iPadOS
 **Repository:** `OpenTTDPad`
 **Research snapshot date:** July 19, 2026

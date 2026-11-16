@@ -1,0 +1,47 @@
+name: Bug report
+description: Something in OpenTTDPad doesn't work or looks wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing OpenTTDPad. If the problem also happens in desktop OpenTTD, please report it to [OpenTTD](https://github.com/OpenTTD/OpenTTD/issues) instead.
+  - type: input
+    id: version
+    attributes:
+      label: OpenTTDPad version
+      description: Shown in ⋯ → About OpenTTDPad.
+      placeholder: 0.2.0 (2)
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: iPad model and iPadOS version
+      placeholder: iPad Pro 12.9-inch (6th generation), iPadOS 27.2.1
+    validations:
+      required: true
+  - type: dropdown
+    id: input
+    attributes:
+      label: How were you playing?
+      multiple: true
+      options:
+        - Touch
+        - Apple Pencil
+        - Trackpad or mouse
+        - Hardware keyboard
+        - External display or Stage Manager
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead. A screenshot or screen recording helps a lot.
+    validations:
+      required: true
+  - type: textarea
+    id: crash
+    attributes:
+      label: Crash log
+      description: |
+        If the game crashed, open the Files app → On My iPad → OpenTTDPad → OpenTTD, and attach the newest `crash….json.log` (and the matching `.png`). The `.sav` next to it is your game at the moment of the crash; attach it too if you're happy to share it.

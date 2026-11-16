@@ -4,9 +4,14 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
+    # macOS minutes are free for public repositories. While the repository is
+    # private, run this only on demand (Actions > Run workflow) and use
+    # scripts/check-local.sh for every change.
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

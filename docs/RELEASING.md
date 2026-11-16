@@ -6,7 +6,10 @@ existing release untouched. Publishing is always a manual step.
 
 ## Before publishing
 
-1. `main` is green: hygiene, Simulator and device workflows.
+1. `./scripts/check-local.sh` passes on `main`. While the repository is
+   private, the macOS workflows run only when started by hand (GitHub Free's
+   private Actions allowance covers about 190 macOS minutes a month); once it is
+   public they run on every push and pull request at no cost.
 2. Build the release candidate from a clean `main` checkout:
 
    ```sh

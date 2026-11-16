@@ -92,6 +92,12 @@ All scripts are idempotent and fail loudly with actionable messages.
 
 ## 5. Continuous integration (GitHub Actions, macOS runners)
 
+> **Current setup.** Hygiene runs on Linux for every change. The macOS
+> workflows (macOS validation, iPad Simulator, unsigned iPad device) run on
+> every push and pull request when the repository is public, and only on
+> demand while it is private. `scripts/check-local.sh` runs the same checks on
+> a developer Mac.
+
 **BR-10.** Required workflows:
 
 | Workflow | Trigger | Jobs |

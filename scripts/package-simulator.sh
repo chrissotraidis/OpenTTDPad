@@ -23,7 +23,7 @@ rsync -a "$repo_root/ref/game-files/extracted/opengfx/opengfx-8.0/" "$app/basese
 rsync -a "$repo_root/ref/game-files/extracted/opensfx/opensfx-1.0.3/" "$app/baseset/"
 rsync -a "$repo_root/ref/game-files/extracted/openmsx/openmsx-0.4.2/" "$app/baseset/"
 
-cp "$repo_root/LICENSE" "$app/docs/COPYING-OpenTTD.md"
+cp "$repo_root/engine/COPYING.md" "$app/docs/COPYING-OpenTTD.md"
 cp "$repo_root/THIRD_PARTY_NOTICES.md" "$app/docs/THIRD_PARTY_NOTICES.md"
 cp "$repo_root/ref/SDL2/LICENSE.txt" "$app/docs/licenses/SDL-2.32.10.txt"
 cp "$repo_root/ref/xz/COPYING.0BSD" "$app/docs/licenses/xz-liblzma-5.8.3.txt"

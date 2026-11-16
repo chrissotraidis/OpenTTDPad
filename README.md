@@ -109,9 +109,14 @@ first if you must reinstall. The install needs about 65 MB of free space.
 
 Download `OpenTTDPad-unsigned.ipa` from the
 [0.2.0 release](https://github.com/chrissotraidis/OpenTTDPad/releases/tag/v0.2.0),
-check it against `SHA256SUMS`, and sign it with your own Apple ID or developer
-account using Xcode, `devicectl` or your usual sideloading tool. The release
-also carries the complete corresponding source required by the GPL.
+check it against `SHA256SUMS`, and install it with a sideloading tool that signs
+it with your own Apple ID, such as [Sideloadly](https://sideloadly.io/) (Mac or
+Windows) or [AltStore](https://altstore.io/). Developers can sign it with Xcode
+or `devicectl`. The release also carries the complete corresponding source
+required by the GPL.
+
+With a free Apple ID, iPadOS stops opening sideloaded apps after seven days.
+Reinstall or refresh it over the existing app and your saves stay.
 
 </details>
 
@@ -275,6 +280,25 @@ iPadOS only installs apps signed for your device, so sign it with your own Apple
 ID or developer account, or let PadMint build a copy for you. There is no App
 Store version.
 
+### It stopped opening after a week
+
+Apps signed with a free Apple ID expire after seven days. Refresh it in your
+sideloading tool, or install the IPA again over the existing app; your saves and
+settings are kept. A paid Apple Developer account signs for a year.
+
+### Where are my saves?
+
+In the Files app under **On My iPad → OpenTTDPad → OpenTTD → save**. You can also
+use **⋯ → Export All Saves** to share them as one ZIP, and **⋯ → Import Save or
+Content** to bring saves, scenarios and heightmaps in.
+
+### The game crashed. What should I send?
+
+Open Files → On My iPad → OpenTTDPad → OpenTTD and attach the newest
+`crash….json.log` and its `.png` to a
+[bug report](https://github.com/chrissotraidis/OpenTTDPad/issues/new/choose). The
+log records where the crash happened and why.
+
 ### Are my saves compatible with desktop OpenTTD?
 
 Yes. The save format is OpenTTD 15.3's. Export saves through Files or the share
@@ -317,12 +341,13 @@ Start with the [architecture](docs/02-architecture.md), the
 
 ## Contributing
 
-Keep changes narrow, preserve upstream gameplay and save behaviour, add
-deterministic coverage for gesture boundaries, record edits to inherited
-upstream files in [`docs/PATCHES.md`](docs/PATCHES.md), and never commit
-downloaded sources or game data from `ref/`. The most useful contributions
-right now are physical-iPad test reports: device model, iPadOS version, what you
-did, what happened, and a screenshot or log.
+The most useful contributions right now are reports from real iPads: device
+model, iPadOS version, what you did, what happened, and a screenshot or crash
+log. Use the [issue forms](https://github.com/chrissotraidis/OpenTTDPad/issues/new/choose)
+or say hello on [Discord](https://discord.gg/xwHfUD2bxW).
+
+For code, read [CONTRIBUTING.md](CONTRIBUTING.md). `./scripts/check-local.sh`
+runs the same checks as CI on your Mac.
 
 ## License and identity
 

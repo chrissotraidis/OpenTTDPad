@@ -1,0 +1,11 @@
+name: Idea or request
+description: Suggest something that would make OpenTTDPad better on iPad
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      description: Describe the change and the situation where you wanted it.
+    validations:
+      required: true

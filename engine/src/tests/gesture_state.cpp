@@ -198,6 +198,33 @@ TEST_CASE("OpenTTDPad precision uses an offset crosshair and UI holds stay inert
 	CHECK(ui.Update(500).empty());
 }
 
+TEST_CASE("OpenTTDPad deliberate presses tap where the finger landed")
+{
+	/* A 400 ms press on a window button used to fall between the 300 ms tap
+	 * limit and the 500 ms long press and did nothing. */
+	GestureState slow;
+	slow.FingerDown(1, {20, 40}, 0, true, false);
+	slow.Update(400);
+	auto slow_up = slow.FingerUp(1, {20, 40}, 400);
+	REQUIRE(slow_up.size() == 1);
+	CHECK(slow_up.front().type == ActionType::Tap);
+
+	GestureState held;
+	held.FingerDown(1, {20, 40}, 0, true, false);
+	CHECK(held.Update(1500).empty());
+	CHECK(HasAction(held.FingerUp(1, {20, 40}, 1500), ActionType::Tap));
+
+	/* Lifting rolls the contact a few points; the click stays on the target. */
+	GestureState rolled;
+	rolled.FingerDown(1, {20, 40}, 0, true, false);
+	rolled.FingerMove(1, {26, 45}, 80);
+	auto rolled_up = rolled.FingerUp(1, {26, 45}, 120);
+	REQUIRE(rolled_up.size() == 1);
+	CHECK(rolled_up.front().type == ActionType::Tap);
+	CHECK(rolled_up.front().position.x == 20);
+	CHECK(rolled_up.front().position.y == 40);
+}
+
 TEST_CASE("OpenTTDPad two-finger contact cancels precision without committing")
 {
 	GestureState state;

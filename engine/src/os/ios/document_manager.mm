@@ -7,6 +7,7 @@
 /** @file document_manager.mm Native Files, sharing, notices, and touch settings. */
 
 #include "../../stdafx.h"
+#include "../../rev.h"
 #include "document_manager.h"
 
 #import <UIKit/UIKit.h>
@@ -19,6 +20,8 @@
 
 static UIButton *OpenTTDPadOptionsButton;
 static std::atomic<uint64_t> OpenTTDPadSettingsGeneration{1};
+static int OpenTTDPadToolbarBottom;
+static int OpenTTDPadStatusTop;
 
 static NSString *OpenTTDPadPersonalDirectory()
 {
@@ -56,12 +59,37 @@ static void OpenTTDPadPositionOptionsButton(UIWindow *window)
 	if (window == nil || OpenTTDPadOptionsButton == nil) return;
 	const UIEdgeInsets safe = window.safeAreaInsets;
 	const CGFloat scale = OpenTTDPadOverlayCoordinateScale(window);
-	const CGFloat x = OpenTTDPadControlsLeftHanded() ? safe.left + 30.0 * scale :
-		CGRectGetWidth(window.bounds) - safe.right - 30.0 * scale;
-	/* Stay in the lower thumb corner without entering iPadOS's Dock and
-	 * bottom-corner gesture interception zone after app reactivation. */
-	const CGFloat y = CGRectGetHeight(window.bounds) - safe.bottom - 72.0 * scale;
-	OpenTTDPadOptionsButton.center = CGPointMake(x, y);
+	/* Just below the end of the main toolbar (under its Help button, or under
+	 * Pause for left-handed play), with a little air on both sides. */
+	const CGFloat half = CGRectGetWidth(OpenTTDPadOptionsButton.bounds) / 2.0;
+	const CGFloat margin = 10.0 * scale;
+	const CGFloat x = OpenTTDPadControlsLeftHanded() ? safe.left + margin + half :
+		CGRectGetWidth(window.bounds) - safe.right - margin - half;
+	const CGFloat top = std::max<CGFloat>(safe.top, OpenTTDPadToolbarBottom * scale);
+	const CGPoint centre = CGPointMake(x, top + margin + half);
+	if (CGPointEqualToPoint(OpenTTDPadOptionsButton.center, centre)) return;
+	/* Glide when a docked game window moves it; place it outright the first time. */
+	static UIButton *placed = nil;
+	if (placed == OpenTTDPadOptionsButton) {
+		[UIView animateWithDuration:0.18 animations:^{ OpenTTDPadOptionsButton.center = centre; }];
+	} else {
+		OpenTTDPadOptionsButton.center = centre;
+		placed = OpenTTDPadOptionsButton;
+	}
+}
+
+extern "C" void OpenTTDPadSetChromeEdges(int toolbar_bottom, int status_top)
+{
+	if (toolbar_bottom == OpenTTDPadToolbarBottom && status_top == OpenTTDPadStatusTop) return;
+	OpenTTDPadToolbarBottom = toolbar_bottom;
+	OpenTTDPadStatusTop = status_top;
+	OpenTTDPadRefreshControlPlacement();
+}
+
+extern "C" void OpenTTDPadChromeEdges(double *toolbar_bottom, double *status_top)
+{
+	*toolbar_bottom = OpenTTDPadToolbarBottom;
+	*status_top = OpenTTDPadStatusTop;
 }
 
 static UIViewController *OpenTTDPadPresenter()
@@ -77,9 +105,8 @@ static void OpenTTDPadAnchorPopover(UIViewController *controller)
 	if (popover == nil || OpenTTDPadOptionsButton == nil) return;
 	popover.sourceView = OpenTTDPadOptionsButton;
 	popover.sourceRect = OpenTTDPadOptionsButton.bounds;
-	/* The persistent control lives at the bottom edge, so keep every menu
-	 * above it and inside the landscape game window. */
-	popover.permittedArrowDirections = UIPopoverArrowDirectionDown;
+	/* The persistent control sits under the toolbar, so menus open below it. */
+	popover.permittedArrowDirections = UIPopoverArrowDirectionUp;
 }
 
 static void OpenTTDPadPresentMessage(NSString *title, NSString *message)
@@ -237,6 +264,83 @@ static NSURL *OpenTTDPadCreateSaveArchive(NSError **output_error, NSUInteger *ou
 	return [archive writeToURL:destination options:NSDataWritingAtomic error:output_error] ? destination : nil;
 }
 
+/** The About page: who made what, which versions, and where the source lives. */
+static NSAttributedString *OpenTTDPadAboutText()
+{
+	NSMutableAttributedString *text = [[[NSMutableAttributedString alloc] init] autorelease];
+	NSMutableParagraphStyle *centred = [[[NSMutableParagraphStyle alloc] init] autorelease];
+	centred.alignment = NSTextAlignmentCenter;
+	centred.paragraphSpacing = 4;
+	NSMutableParagraphStyle *body = [[[NSMutableParagraphStyle alloc] init] autorelease];
+	body.paragraphSpacing = 10;
+	body.lineSpacing = 2;
+
+	auto append = ^(NSString *string, NSDictionary *attributes) {
+		[text appendAttributedString:[[[NSAttributedString alloc] initWithString:string attributes:attributes] autorelease]];
+	};
+	auto heading = ^(NSString *string) {
+		append([string stringByAppendingString:@"\n"], @{
+			NSFontAttributeName: [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold],
+			NSForegroundColorAttributeName: UIColor.secondaryLabelColor, NSParagraphStyleAttributeName: body});
+	};
+	auto paragraph = ^(NSString *string) {
+		append([string stringByAppendingString:@"\n\n"], @{NSFontAttributeName: [UIFont systemFontOfSize:16],
+			NSForegroundColorAttributeName: UIColor.labelColor, NSParagraphStyleAttributeName: body});
+	};
+	auto link = ^(NSString *title, NSString *detail, NSString *url) {
+		append(title, @{NSFontAttributeName: [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold],
+			NSLinkAttributeName: [NSURL URLWithString:url], NSParagraphStyleAttributeName: body});
+		append([NSString stringWithFormat:@"  %@\n", detail], @{NSFontAttributeName: [UIFont systemFontOfSize:14],
+			NSForegroundColorAttributeName: UIColor.secondaryLabelColor, NSParagraphStyleAttributeName: body});
+	};
+
+	UIImage *icon = [UIImage imageNamed:@"AppIcon60x60"];
+	if (icon != nil) {
+		const CGRect frame = CGRectMake(0, 0, 76, 76);
+		UIGraphicsImageRenderer *renderer = [[[UIGraphicsImageRenderer alloc] initWithSize:frame.size] autorelease];
+		UIImage *rounded = [renderer imageWithActions:^(__unused UIGraphicsImageRendererContext *context) {
+			[[UIBezierPath bezierPathWithRoundedRect:frame cornerRadius:17] addClip];
+			[icon drawInRect:frame];
+		}];
+		NSTextAttachment *attachment = [[[NSTextAttachment alloc] init] autorelease];
+		attachment.image = rounded;
+		attachment.bounds = frame;
+		NSMutableAttributedString *picture = [[[NSAttributedString attributedStringWithAttachment:attachment] mutableCopy] autorelease];
+		[picture addAttribute:NSParagraphStyleAttributeName value:centred range:NSMakeRange(0, picture.length)];
+		[text appendAttributedString:picture];
+		append(@"\n", @{NSParagraphStyleAttributeName: centred});
+	}
+
+	NSDictionary *info = NSBundle.mainBundle.infoDictionary;
+	append(@"OpenTTDPad\n", @{NSFontAttributeName: [UIFont systemFontOfSize:28 weight:UIFontWeightBold],
+		NSForegroundColorAttributeName: UIColor.labelColor, NSParagraphStyleAttributeName: centred});
+	append([NSString stringWithFormat:@"Version %@ (%@) · OpenTTD %s\n\n", info[@"CFBundleShortVersionString"],
+		info[@"CFBundleVersion"], _openttd_revision.c_str()], @{NSFontAttributeName: [UIFont systemFontOfSize:15],
+		NSForegroundColorAttributeName: UIColor.secondaryLabelColor, NSParagraphStyleAttributeName: centred});
+
+	paragraph(@"OpenTTD, shaped for iPad: touch-first construction, a precision loupe, Apple Pencil, trackpad and "
+		"keyboard, desktop-compatible saves, and free graphics, sound and music.");
+
+	heading(@"LINKS");
+	link(@"Source code and releases", @"github.com/chrissotraidis/OpenTTDPad",
+		@"https://github.com/chrissotraidis/OpenTTDPad");
+	link(@"Report a problem", @"Include your iPad model and what you tapped",
+		@"https://github.com/chrissotraidis/OpenTTDPad/issues");
+	link(@"Build your own copy", @"With PadMint on an Apple Silicon Mac", @"https://github.com/chrissotraidis/padmint");
+	link(@"OpenTTD", @"The open-source game this port is built on", @"https://www.openttd.org/");
+	append(@"\n", @{});
+
+	heading(@"CREDITS");
+	paragraph(@"OpenTTD is made by the OpenTTD team and its contributors. Graphics by OpenGFX, sound effects by "
+		"OpenSFX and music by OpenMSX, played through the TimGM6mb sound font. The iPad port is by Chris Sotraidis.");
+
+	heading(@"LICENSE");
+	paragraph(@"OpenTTDPad is free software under the GNU General Public License, version 2. The Components and "
+		"OpenTTD License tabs list every bundled library and its license. OpenTTDPad is an independent community "
+		"project, not affiliated with or endorsed by OpenTTD, Transport Tycoon Deluxe or their rights holders.");
+	return text;
+}
+
 static NSAttributedString *OpenTTDPadFormattedNotices(NSString *markdown)
 {
 	NSMutableAttributedString *result = [[[NSMutableAttributedString alloc] init] autorelease];
@@ -346,7 +450,7 @@ static NSAttributedString *OpenTTDPadFormattedMarkdown(NSString *markdown)
 		handler:^(__unused UIAlertAction *action) { [self showExport]; }]];
 	[menu addAction:[UIAlertAction actionWithTitle:@"Touch Controls" style:UIAlertActionStyleDefault
 		handler:^(__unused UIAlertAction *action) { [self showTouchSettings]; }]];
-	[menu addAction:[UIAlertAction actionWithTitle:@"Licenses & Credits" style:UIAlertActionStyleDefault
+	[menu addAction:[UIAlertAction actionWithTitle:@"About OpenTTDPad" style:UIAlertActionStyleDefault
 		handler:^(__unused UIAlertAction *action) { [self showNotices]; }]];
 	[menu addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
 	OpenTTDPadAnchorPopover(menu);
@@ -565,10 +669,10 @@ static NSAttributedString *OpenTTDPadFormattedMarkdown(NSString *markdown)
 	NSString *notices = [NSString stringWithContentsOfFile:notices_path encoding:NSUTF8StringEncoding error:nil] ?: @"";
 	NSString *copying = [NSString stringWithContentsOfFile:copying_path encoding:NSUTF8StringEncoding error:nil] ?: @"";
 	UIViewController *controller = [[UIViewController alloc] init];
-	controller.title = @"Licenses & Credits";
+	controller.title = @"About OpenTTDPad";
 	controller.view.backgroundColor = UIColor.systemBackgroundColor;
 	controller.preferredContentSize = CGSizeMake(620, 620);
-	UISegmentedControl *section = [[UISegmentedControl alloc] initWithItems:@[@"Components", @"OpenTTD License"]];
+	UISegmentedControl *section = [[UISegmentedControl alloc] initWithItems:@[@"About", @"Components", @"OpenTTD License"]];
 	section.translatesAutoresizingMaskIntoConstraints = NO;
 	section.selectedSegmentIndex = 0;
 	section.accessibilityLabel = @"License section";
@@ -577,12 +681,14 @@ static NSAttributedString *OpenTTDPadFormattedMarkdown(NSString *markdown)
 	text.editable = NO;
 	text.selectable = YES;
 	text.adjustsFontForContentSizeCategory = YES;
-	text.attributedText = OpenTTDPadFormattedNotices(notices);
+	text.attributedText = OpenTTDPadAboutText();
 	text.textContainerInset = UIEdgeInsetsMake(18, 18, 24, 18);
 	text.accessibilityLabel = @"OpenTTDPad licenses and credits";
 	[section addAction:[UIAction actionWithHandler:^(UIAction *action) {
 		UISegmentedControl *control = (UISegmentedControl *)action.sender;
 		if (control.selectedSegmentIndex == 0) {
+			text.attributedText = OpenTTDPadAboutText();
+		} else if (control.selectedSegmentIndex == 1) {
 			text.attributedText = OpenTTDPadFormattedNotices(notices);
 		} else {
 			text.attributedText = OpenTTDPadFormattedMarkdown(copying);

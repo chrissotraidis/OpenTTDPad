@@ -85,6 +85,7 @@ final class OpenTTDPadUITests: XCTestCase {
         let cancel = app.buttons["Cancel active construction tool"]
         XCTAssertTrue(cancel.waitForExistence(timeout: 3))
         XCTAssertGreaterThanOrEqual(cancel.frame.height, 44)
+        attachScreenshot("Construction tool active with Cancel")
 
         /* Left/right placement must update an already-active construction
          * control, not only the options button on the next launch. */
@@ -173,7 +174,9 @@ final class OpenTTDPadUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(options.frame.width, 30)
         XCTAssertGreaterThanOrEqual(options.frame.height, 30)
         XCTAssertLessThanOrEqual(options.frame.width, 46)
-        XCTAssertGreaterThan(options.frame.midY, surface.frame.height * 0.75)
+        /* Just under the main toolbar, clear of the top edge. */
+        XCTAssertLessThan(options.frame.midY, surface.frame.height * 0.15)
+        XCTAssertGreaterThan(options.frame.minY, 20)
         options.tap()
         XCTAssertTrue(app.buttons["Touch Controls"].waitForExistence(timeout: 2))
         attachScreenshot("01 OpenTTDPad options")
@@ -211,9 +214,9 @@ final class OpenTTDPadUITests: XCTestCase {
         XCTAssertEqual(haptics.value as? String, originalHapticsValue)
         app.buttons["Done"].tap()
         options.tap()
-        XCTAssertTrue(app.buttons["Licenses & Credits"].waitForExistence(timeout: 2))
-        app.buttons["Licenses & Credits"].tap()
-        XCTAssertTrue(app.navigationBars["Licenses & Credits"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["About OpenTTDPad"].waitForExistence(timeout: 2))
+        app.buttons["About OpenTTDPad"].tap()
+        XCTAssertTrue(app.navigationBars["About OpenTTDPad"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.textViews["OpenTTDPad licenses and credits"].exists)
         XCTAssertTrue(app.segmentedControls["License section"].exists)
         attachScreenshot("03 OpenTTDPad licenses and credits")

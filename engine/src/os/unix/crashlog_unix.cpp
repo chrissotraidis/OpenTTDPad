@@ -18,7 +18,7 @@
 #include <signal.h>
 #include <sys/utsname.h>
 
-#if defined(__GLIBC__)
+#if defined(__GLIBC__) || defined(OPENTTDPAD_IOS)
 /* Execinfo (and thus making stacktraces) is a GNU extension */
 #	include <execinfo.h>
 #endif
@@ -55,7 +55,7 @@ class CrashLogUnix : public CrashLog {
 
 	void SurveyStacktrace([[maybe_unused]] nlohmann::json &survey) const override
 	{
-#if defined(__GLIBC__)
+#if defined(__GLIBC__) || defined(OPENTTDPAD_IOS)
 		void *trace[64];
 		int trace_size = backtrace(trace, lengthof(trace));
 

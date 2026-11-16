@@ -163,6 +163,9 @@ The gesture vocabulary stays small; context does the clever work.
 | Touch and hold | Open a 132-point precision loupe; move to aim, lift to commit |
 | **Cancel** button | End construction without a stray placement |
 
+The **⋯** button just under the toolbar's Help button opens Files (import and
+export saves), Touch Controls and About OpenTTDPad.
+
 Undersized OpenTTD controls get touch targets of at least 44 points without
 changing their artwork, and controls can be placed for left- or right-handed
 reach. Mouse, trackpad, scroll wheel and hardware keyboard keep their normal

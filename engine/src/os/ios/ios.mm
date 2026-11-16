@@ -8,6 +8,7 @@
 
 #include "../../stdafx.h"
 #include "../../debug.h"
+#include "../../crashlog.h"
 #include "document_manager.h"
 
 #import <Foundation/Foundation.h>
@@ -16,7 +17,39 @@
 #include <SDL.h>
 #include <SDL_syswm.h>
 
+#include <exception>
+
 #include "../../safeguards.h"
+
+/* OpenTTD's crash handler catches the SIGABRT that follows an uncaught
+ * Objective-C or C++ exception, but only knows the signal. Record what was
+ * thrown, and where, so the crash log says why. */
+static void OpenTTDPadRecordUncaughtException(NSException *exception)
+{
+	NSString *stack = [exception.callStackSymbols componentsJoinedByString:@"\n"] ?: @"";
+	CrashLog::SetErrorMessage(fmt::format("Uncaught Objective-C exception {}: {}\n{}",
+		exception.name.UTF8String ?: "", exception.reason.UTF8String ?: "", stack.UTF8String ?: ""));
+}
+
+static void OpenTTDPadTerminate()
+{
+	if (std::exception_ptr thrown = std::current_exception()) {
+		try {
+			std::rethrow_exception(thrown);
+		} catch (const std::exception &error) {
+			CrashLog::SetErrorMessage(fmt::format("Uncaught C++ exception: {}", error.what()));
+		} catch (...) {
+			/* An Objective-C exception has already recorded its own message. */
+		}
+	}
+	std::abort();
+}
+
+__attribute__((constructor)) static void OpenTTDPadInstallExceptionRecorders()
+{
+	NSSetUncaughtExceptionHandler(&OpenTTDPadRecordUncaughtException);
+	std::set_terminate(&OpenTTDPadTerminate);
+}
 
 static UIWindowScene *OpenTTDPadActiveScene;
 static UIWindow *OpenTTDPadSDLWindow;
@@ -79,13 +112,16 @@ static UIWindow *OpenTTDPadGameWindow()
 
 static CGFloat OpenTTDPadOverlayScale(UIWindow *window)
 {
+	/* UIKit overlays are laid out in points, the same units as the game
+	 * window. Only a window that UIKit has scaled (never the Retina factor)
+	 * changes their size. */
 	if (window == nil || window.screen == nil) return 1.0;
 	const CGSize window_size = window.bounds.size;
 	const CGSize screen_size = window.screen.bounds.size;
 	const CGFloat window_long_edge = std::max(window_size.width, window_size.height);
 	const CGFloat screen_long_edge = std::max(screen_size.width, screen_size.height);
 	const CGFloat coordinate_scale = screen_long_edge > 0 ? window_long_edge / screen_long_edge : 1.0;
-	return std::clamp(std::max(coordinate_scale, window.screen.scale), 1.0, 3.0);
+	return std::clamp(coordinate_scale, 1.0, 3.0);
 }
 
 static void OpenTTDPadRequestLandscape(UIWindowScene *scene)
@@ -226,12 +262,21 @@ static void OpenTTDPadPositionToolOverlay(UIWindow *window)
 	const UIEdgeInsets safe = window.safeAreaInsets;
 	const CGFloat scale = OpenTTDPadOverlayScale(window);
 	const bool left_handed = OpenTTDPadControlsLeftHanded();
+	/* A compact pill in the lower corner, just above the status bar. */
+	double toolbar_bottom = 0, status_top = 0;
+	OpenTTDPadChromeEdges(&toolbar_bottom, &status_top);
+	const CGSize size = OpenTTDPadCancelToolButton.bounds.size;
+	const CGFloat margin = 12.0 * scale;
+	const CGFloat bottom = std::min<CGFloat>(CGRectGetHeight(window.bounds) - safe.bottom,
+		status_top > 0 ? status_top * scale : CGRectGetHeight(window.bounds));
 	OpenTTDPadCancelToolButton.center = CGPointMake(
-		left_handed ? safe.left + 72.0 * scale : CGRectGetWidth(window.bounds) - safe.right - 72.0 * scale,
-		CGRectGetHeight(window.bounds) - safe.bottom - 42.0 * scale);
+		left_handed ? safe.left + margin + size.width / 2.0 :
+			CGRectGetWidth(window.bounds) - safe.right - margin - size.width / 2.0,
+		bottom - margin - size.height / 2.0);
 	if (OpenTTDPadToolHint == nil) return;
 	const CGFloat half_width = CGRectGetWidth(OpenTTDPadToolHint.bounds) / 2.0;
-	const CGFloat proposed_x = OpenTTDPadCancelToolButton.center.x + (left_handed ? 180.0 : -180.0) * scale;
+	const CGFloat gap = size.width / 2.0 + 10.0 * scale + half_width;
+	const CGFloat proposed_x = OpenTTDPadCancelToolButton.center.x + (left_handed ? gap : -gap);
 	const CGFloat minimum_x = safe.left + half_width + 8.0 * scale;
 	const CGFloat maximum_x = CGRectGetWidth(window.bounds) - safe.right - half_width - 8.0 * scale;
 	OpenTTDPadToolHint.center = CGPointMake(std::clamp(proposed_x, minimum_x, maximum_x),
@@ -323,14 +368,20 @@ extern "C" void OpenTTDPadSetToolOverlay(bool active)
 		if (window == nil || OpenTTDPadCancelToolButton != nil) return;
 		const CGFloat scale = OpenTTDPadOverlayScale(window);
 		OpenTTDPadCancelToolButton = [[UIButton buttonWithType:UIButtonTypeSystem] retain];
-		OpenTTDPadCancelToolButton.frame = CGRectMake(0, 0, 112.0 * scale, 52.0 * scale);
-		OpenTTDPadCancelToolButton.backgroundColor = [UIColor colorWithRed:0.70 green:0.12 blue:0.10 alpha:0.94];
-		OpenTTDPadCancelToolButton.layer.cornerRadius = 16.0 * scale;
+		/* Same dark glass as the options button; 44 pt tall for the finger. */
+		OpenTTDPadCancelToolButton.frame = CGRectMake(0, 0, 96.0 * scale, 44.0 * scale);
+		OpenTTDPadCancelToolButton.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.88];
+		OpenTTDPadCancelToolButton.layer.cornerRadius = 22.0 * scale;
 		OpenTTDPadCancelToolButton.layer.borderWidth = scale;
-		OpenTTDPadCancelToolButton.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.32].CGColor;
-		[OpenTTDPadCancelToolButton setTitle:@"✕  Cancel" forState:UIControlStateNormal];
+		OpenTTDPadCancelToolButton.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.24].CGColor;
+		UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration configurationWithPointSize:13.0 * scale
+			weight:UIImageSymbolWeightBold];
+		[OpenTTDPadCancelToolButton setImage:[[UIImage systemImageNamed:@"xmark"] imageWithConfiguration:symbol]
+			forState:UIControlStateNormal];
+		[OpenTTDPadCancelToolButton setTitle:@" Cancel" forState:UIControlStateNormal];
 		[OpenTTDPadCancelToolButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-		OpenTTDPadCancelToolButton.titleLabel.font = [UIFont boldSystemFontOfSize:16.0 * scale];
+		OpenTTDPadCancelToolButton.tintColor = [UIColor colorWithRed:1.0 green:0.42 blue:0.38 alpha:1.0];
+		OpenTTDPadCancelToolButton.titleLabel.font = [UIFont systemFontOfSize:15.0 * scale weight:UIFontWeightSemibold];
 		OpenTTDPadCancelToolButton.accessibilityLabel = @"Cancel active construction tool";
 		[OpenTTDPadCancelToolButton addTarget:[OpenTTDPadOverlayActions shared] action:@selector(cancelActiveTool)
 			forControlEvents:UIControlEventTouchUpInside];
@@ -339,13 +390,13 @@ extern "C" void OpenTTDPadSetToolOverlay(bool active)
 
 		if (![[NSUserDefaults standardUserDefaults] boolForKey:@"OpenTTDPadToolHintSeen"]) {
 			[[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"OpenTTDPadToolHintSeen"];
-			OpenTTDPadToolHint = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 280.0 * scale, 40.0 * scale)];
+			OpenTTDPadToolHint = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 260.0 * scale, 36.0 * scale)];
 			OpenTTDPadToolHint.text = @"Drag to build · Two fingers cancel";
 			OpenTTDPadToolHint.textAlignment = NSTextAlignmentCenter;
 			OpenTTDPadToolHint.textColor = UIColor.whiteColor;
-			OpenTTDPadToolHint.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.92];
-			OpenTTDPadToolHint.font = [UIFont systemFontOfSize:15.0 * scale weight:UIFontWeightSemibold];
-			OpenTTDPadToolHint.layer.cornerRadius = 12.0 * scale;
+			OpenTTDPadToolHint.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.88];
+			OpenTTDPadToolHint.font = [UIFont systemFontOfSize:14.0 * scale weight:UIFontWeightMedium];
+			OpenTTDPadToolHint.layer.cornerRadius = 18.0 * scale;
 			OpenTTDPadToolHint.layer.masksToBounds = YES;
 			[window addSubview:OpenTTDPadToolHint];
 			OpenTTDPadPositionToolOverlay(window);

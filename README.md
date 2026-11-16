@@ -1,48 +1,75 @@
 <p align="center">
-  <img src="os/ios/AppIcon.png" alt="OpenTTDPad app icon" width="160">
+  <img src="os/ios/AppIcon.png" alt="OpenTTDPad app icon: the OpenTTD logo" width="148">
 </p>
 
 <h1 align="center">OpenTTDPad</h1>
 
 <p align="center">
   <strong>OpenTTD, native on iPad.</strong><br>
-  Build railways, roads, ports and airports with touch-first construction, a precision loupe,
-  Apple Pencil, trackpad and keyboard. Desktop-compatible saves and free graphics, sound and music included.
+  Railways, roads, ships and planes, built with your fingers. Touch-first construction, a precision loupe,
+  Apple Pencil, trackpad and keyboard, desktop-compatible saves, and free graphics, sound and music.
 </p>
 
 <p align="center">
+  <a href="https://github.com/chrissotraidis/OpenTTDPad/releases/tag/v0.2.0"><img alt="Release 0.2.0 preview" src="https://img.shields.io/badge/release-0.2.0%20preview-FF9F0A"></a>
   <img alt="iPadOS 17 or later" src="https://img.shields.io/badge/iPadOS-17%2B-0A84FF?logo=apple">
+  <img alt="OpenTTD 15.3" src="https://img.shields.io/badge/OpenTTD-15.3-F28C28">
   <img alt="Native ARM64" src="https://img.shields.io/badge/runtime-native%20ARM64-30D158">
-  <img alt="OpenTTD 15.3" src="https://img.shields.io/badge/OpenTTD-15.3-FF9F0A">
-  <img alt="SDL 2.32.10 with UIKit scenes" src="https://img.shields.io/badge/SDL-2.32.10%20%2B%20scenes-5E5CE6">
-  <img alt="iPadOS 27 physical iPad checked" src="https://img.shields.io/badge/iPadOS%2027-physical%20iPad%20checked-30D158">
-  <img alt="Free OpenGFX, OpenSFX and OpenMSX included" src="https://img.shields.io/badge/content-OpenGFX%20%C2%B7%20OpenSFX%20%C2%B7%20OpenMSX-3EB489">
+  <img alt="iPadOS 27 checked on a physical iPad" src="https://img.shields.io/badge/iPadOS%2027-physical%20iPad%20checked-30D158">
   <img alt="Original TTD data not required" src="https://img.shields.io/badge/original%20TTD%20data-not%20required-8E8E93">
   <a href="LICENSE"><img alt="License: GPLv2" src="https://img.shields.io/badge/license-GPLv2-8E8E93"></a>
-  <a href="https://github.com/chrissotraidis/OpenTTDPad/releases/tag/v0.2.0"><img alt="Release 0.2.0 preview" src="https://img.shields.io/badge/release-0.2.0%20preview-FF9F0A"></a>
   <a href="https://github.com/chrissotraidis/padmint"><img alt="Build with PadMint" src="https://img.shields.io/badge/PadMint-build%20your%20own-3EB489"></a>
   <a href="https://discord.gg/xwHfUD2bxW"><img alt="Join the community on Discord" src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&amp;logoColor=white"></a>
 </p>
 
 <p align="center">
-  <a href="#get-openttdpad">Get OpenTTDPad</a> ·
+  <a href="#get-openttdpad"><strong>Get OpenTTDPad</strong></a> ·
   <a href="#controls">Controls</a> ·
-  <a href="#external-displays-and-ipados-27">External displays</a> ·
+  <a href="#a-look-around">Screenshots</a> ·
   <a href="#current-status">Status</a> ·
-  <a href="#frequently-asked-questions">FAQ</a> ·
-  <a href="docs/STATUS.md">Evidence log</a>
+  <a href="#frequently-asked-questions">FAQ</a>
 </p>
 
 <p align="center">
-  <img src="docs/evidence/p2-ios-xcuitest-touch.jpg" alt="OpenTTDPad running on iPad with native touch controls" width="920">
+  <img src="docs/readme/hero-railway-town.jpg" alt="A busy OpenTTD rail network with a station, canals and trains, running full screen on iPad" width="920">
 </p>
 
 OpenTTDPad is an unofficial iPadOS port of [OpenTTD](https://www.openttd.org/),
 the open-source transport simulation based on Transport Tycoon Deluxe. The
 OpenTTD 15.3 simulation, economy, pathfinding and save format are untouched.
-OpenTTDPad adds the iPad parts: a UIKit scene shell, a gesture system that
-turns fingers into OpenTTD actions, Files integration, native MIDI music,
-international text, verified HTTPS for Online Content, and reproducible builds.
+OpenTTDPad adds what an iPad needs: a gesture system that turns fingers into
+OpenTTD actions, controls that stay out of the way, Files integration, native
+MIDI music, international text, verified HTTPS for Online Content, and
+reproducible builds.
+
+> [!IMPORTANT]
+> **0.2.0 is the first public preview.** [Download the unsigned IPA](https://github.com/chrissotraidis/OpenTTDPad/releases/tag/v0.2.0)
+> and sign it yourself, build it with [PadMint](https://github.com/chrissotraidis/padmint),
+> or build from source. It runs on a physical iPad Pro 12.9-inch (6th
+> generation) with iPadOS 27.2.1. Pencil, trackpad, keyboard, external displays
+> and long sessions have not been checked on hardware yet. See
+> [Current status](#current-status) and the [0.2.0 release notes](docs/releases/v0.2.0.md).
+
+## Highlights
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/readme/touch-construction.jpg" alt="Railway Construction toolbar open with the compact Cancel button in the corner"></td>
+    <td width="50%"><img src="docs/readme/title-menu.jpg" alt="The OpenTTD title screen and main menu on iPad"></td>
+  </tr>
+  <tr>
+    <td valign="top"><strong>Build with your fingers.</strong> Pick a tool and drag to lay track, road or canal. A second finger or the Cancel button stops the tool without a stray placement.</td>
+    <td valign="top"><strong>All of OpenTTD.</strong> Every game mode, the scenario editor, AI opponents, multiplayer and Online Content, with the free OpenGFX, OpenSFX and OpenMSX sets built in.</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/readme/options-menu.jpg" alt="The OpenTTDPad options menu opening below the toolbar's Help button"></td>
+    <td width="50%"><img src="docs/readme/about-page.jpg" alt="The About OpenTTDPad page with version, links and credits"></td>
+  </tr>
+  <tr>
+    <td valign="top"><strong>Out of the way.</strong> The ⋯ button sits under the toolbar's Help button for saves, Files, touch settings and About. It steps aside when a game window docks in that corner.</td>
+    <td valign="top"><strong>Yours to keep.</strong> Saves are ordinary OpenTTD 15.3 files. Export them all as a ZIP or import saves and content from Files.</td>
+  </tr>
+</table>
 
 **AI disclosure:** OpenTTDPad uses substantial AI assistance for code, tests,
 documentation, debugging and maintenance. There is no audited percentage of
@@ -50,32 +77,22 @@ AI-generated code; build, test and device-acceptance records state what has
 actually been checked. This describes OpenTTDPad's workflow, not the authorship
 of OpenTTD or its other upstream projects.
 
-> [!IMPORTANT]
-> **0.2.0 is the first public preview.** [Download the unsigned IPA](https://github.com/chrissotraidis/OpenTTDPad/releases/tag/v0.2.0)
-> and sign it yourself, build it with [PadMint](https://github.com/chrissotraidis/padmint),
-> or build from source. The build was installed over an existing copy and
-> launched on a physical iPad Pro 12.9-inch (6th generation) running iPadOS
-> 27.2.1: it drew the OpenTTD 15.3 title screen and menu at full screen, played
-> music and responded to touch. A full touch-only game, Pencil, trackpad,
-> keyboard, external displays and long sessions have not yet been checked on
-> hardware. See [Current status](#current-status) and the
-> [0.2.0 release notes](docs/releases/v0.2.0.md).
+## What's new in 0.2.0
 
-## What's new: iPadOS 27 and external displays
+- **Runs on iPadOS 27.** Earlier test builds opened to a black screen because
+  SDL created its window outside the app's UIKit scene. OpenTTDPad now carries
+  the same SDL 2.32.10 scene backport as the other Pad ports
+  ([`patches/sdl2-ios-scenes.patch`](patches/sdl2-ios-scenes.patch)), so the
+  game window follows its scene through rotation, resizing and external displays.
+- **Taps land where your finger lands.** Deliberate presses on small targets
+  such as window close boxes no longer get dropped or slide off as you lift.
+- **The precision loupe shows exactly the spot it will tap.**
+- **Tidier controls:** the ⋯ button under the toolbar's Help button, a compact
+  Cancel pill, and the OpenTTD logo as the app icon.
+- **About OpenTTDPad** with version, links to the source, issues and PadMint,
+  credits and every license.
 
-Earlier builds launched on iPadOS 27 to a **black screen**: the game was running
-and its music played, but SDL created its window outside the app's UIKit scene,
-so iPadOS never showed it. OpenTTDPad now carries the same SDL 2.32.10 scene
-backport as the other Pad ports
-([`patches/sdl2-ios-scenes.patch`](patches/sdl2-ios-scenes.patch)):
-
-- SDL starts only after iPadOS connects the app's scene, and creates its window
-  directly on that scene.
-- The game window follows its scene when it rotates, resizes, or moves to
-  another display, and picks up the new screen's pixel density.
-- If iPadOS replaces the scene, the new scene takes over the existing game
-  window instead of leaving it blank.
-- Orientation comes from the scene, as the iPadOS 27 SDK requires.
+The full list is in the [release notes](docs/releases/v0.2.0.md).
 
 ## Get OpenTTDPad
 
@@ -230,12 +247,16 @@ open until they are shown on hardware and recorded in
 
 <table>
   <tr>
+    <td width="50%"><img src="docs/readme/close-up.jpg" alt="A close-up of a station and trains at the closest zoom level"></td>
     <td width="50%"><img src="docs/readme/online-content.png" alt="OpenTTD Online Content catalog running in OpenTTDPad"></td>
-    <td width="50%"><img src="docs/readme/international-text.png" alt="OpenTTDPad rendering an Arabic right-to-left interface"></td>
   </tr>
   <tr>
-    <td align="center"><strong>Online Content</strong><br>Verified HTTPS catalog access</td>
-    <td align="center"><strong>International text</strong><br>HarfBuzz, ICU and CoreText fallback</td>
+    <td align="center"><strong>Pinch to zoom</strong><br>From the whole map down to single trains</td>
+    <td align="center"><strong>Online Content</strong><br>Thousands of free add-ons over verified HTTPS</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/readme/international-text.png" alt="OpenTTDPad rendering an Arabic right-to-left interface"></td>
+    <td width="50%" valign="middle"><strong>International text</strong><br>Every OpenTTD language, including right-to-left scripts, through HarfBuzz, ICU and CoreText fallback fonts.<br><br>Screenshots are from an iOS 27 iPad Pro 13-inch Simulator running the release build with OpenTTD's own title-screen game.</td>
   </tr>
 </table>
 

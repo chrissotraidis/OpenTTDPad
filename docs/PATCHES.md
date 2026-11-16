@@ -38,10 +38,11 @@ New downstream source surfaces:
 - `engine/src/touch/` — platform-neutral touch thresholds, recognizer,
   finger-count transition reanchoring, and expanded-hit resolver.
 - `engine/src/tests/gesture_state.cpp` — deterministic synthetic input streams.
-- `os/ios/AppIconContents.json` and `BrandTintContents.json` — the generated
-  asset catalog reuses the tracked GPLv2 upstream 1024 px artwork for the
-  native iPad icon and adds one named tint; no duplicate binary artwork is
-  added.
+- `os/ios/AppIcon.png` — OpenTTD's own GPLv2 logo (`engine/media/openttd.2048.png`),
+  unchanged, centred on a navy backdrop with a faint tile grid and flattened to
+  the opaque 1024 px image iPadOS requires. `AppIconContents.json` and
+  `BrandTintContents.json` describe the generated asset catalog and its one
+  named tint.
 
 Pinned dependency patch:
 

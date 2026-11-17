@@ -32,10 +32,13 @@ jobs:
       - name: Write consolidated release checksums
         run: |
           cp THIRD_PARTY_NOTICES.md build/artifacts/THIRD_PARTY_NOTICES.md
+          # PadMint builds from the release recipe it finds in SHA256SUMS.
+          cp padmint.json "build/artifacts/OpenTTDPad-$GITHUB_REF_NAME-padmint.json"
           cd build/artifacts
           shasum -a 256 OpenTTDPad-unsigned.ipa \
             OpenTTDPad-corresponding-source.zip \
-            OpenTTDPad-downstream.patch THIRD_PARTY_NOTICES.md > SHA256SUMS
+            OpenTTDPad-downstream.patch THIRD_PARTY_NOTICES.md \
+            "OpenTTDPad-$GITHUB_REF_NAME-padmint.json" > SHA256SUMS
       - name: Attach unsigned artifacts to a draft release
         # A tag never publishes on its own: it creates a draft for review, and
         # leaves an existing (reviewed or already published) release untouched.
@@ -55,4 +58,5 @@ jobs:
             build/artifacts/OpenTTDPad-downstream.patch \
             build/artifacts/OpenTTDPad-source.sha256 \
             build/artifacts/THIRD_PARTY_NOTICES.md \
+            "build/artifacts/OpenTTDPad-$GITHUB_REF_NAME-padmint.json" \
             build/artifacts/SHA256SUMS

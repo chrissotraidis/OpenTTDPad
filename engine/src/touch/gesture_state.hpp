@@ -115,6 +115,7 @@ private:
 	double MaxMovement() const;
 	TouchPoint EndPan(uint32_t timestamp_ms);
 	TouchPoint UpdatePanVelocity(TouchPoint position, uint32_t timestamp_ms);
+	std::vector<Action> PinchSteps(double distance, TouchPoint centroid);
 	void ResetActiveGesture();
 	std::vector<Action> EmitTap(TouchPoint position, uint32_t timestamp_ms);
 };

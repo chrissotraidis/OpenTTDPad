@@ -38,7 +38,9 @@ existing release untouched. Publishing is always a manual step.
 6. Write `docs/releases/vX.Y.Z.md`, bump `MACOSX_BUNDLE_SHORT_VERSION_STRING` and
    `MACOSX_BUNDLE_BUNDLE_VERSION` in `engine/CMakeLists.txt`, and update the README.
 7. Create a draft GitHub release for `vX.Y.Z` targeting `main`, with the notes and
-   the audited files from `build/artifacts/`.
+   the audited files from `build/artifacts/`, plus `padmint.json` attached as
+   `OpenTTDPad-vX.Y.Z-padmint.json` and listed in `SHA256SUMS`. PadMint only
+   builds a release that publishes its recipe this way.
 
 ## Publishing (owner only)
 

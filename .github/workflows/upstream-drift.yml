@@ -18,7 +18,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           latest=$(git ls-remote --tags --refs https://github.com/OpenTTD/OpenTTD.git | awk -F/ '{print $3}' | grep -E '^[0-9]+\.[0-9]+$' | sort -V | tail -1)
-          pinned=$(awk '/official upstream OpenTTD/ {print $5; exit}' docs/IMPLEMENTATION_GOAL.md)
+          pinned=$(sed -n 's/^- Release tag: `\([^`]*\)`.*/\1/p' UPSTREAM_VERSION.md)
+          if [ -z "$pinned" ]; then
+            echo "UPSTREAM_VERSION.md does not record the pinned release tag" >&2
+            exit 1
+          fi
           printf 'Pinned: %s\nLatest: %s\n' "$pinned" "$latest"
           if [ "$latest" != "$pinned" ]; then
             title="Upstream OpenTTD $latest is available"

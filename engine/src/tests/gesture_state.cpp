@@ -309,3 +309,23 @@ TEST_CASE("OpenTTDPad expands small touch targets and preserves visual bounds")
 	CHECK(clamped.x == 10);
 	CHECK(clamped.y == 20);
 }
+
+TEST_CASE("OpenTTDPad pinch from coincident contacts stays bounded")
+{
+	/* A second contact at exactly the first one's point (a stale touch and a
+	 * new tap on the same spot) made the pinch reference zero, and the zoom
+	 * loop never ended until memory ran out. */
+	GestureState state;
+	state.FingerDown(1, {100, 100}, 0, false);
+	state.FingerDown(2, {100, 100}, 10, false);
+	auto actions = state.FingerMove(2, {160, 100}, 120);
+	CHECK(state.GetState() == State::Pinching);
+	CHECK(actions.size() <= 4);
+	actions = state.FingerMove(2, {400, 100}, 140);
+	CHECK(actions.size() <= 4);
+	actions = state.FingerMove(2, {100, 100}, 160);
+	CHECK(actions.size() <= 4);
+	state.FingerUp(2, {100, 100}, 180);
+	state.FingerUp(1, {100, 100}, 190);
+	CHECK(state.GetState() == State::Idle);
+}

@@ -20,6 +20,35 @@ static double Distance(TouchPoint a, TouchPoint b)
 	return std::hypot(a.x - b.x, a.y - b.y);
 }
 
+/** A pinch measures zoom steps against a reference spacing, which must never be zero. */
+static double PinchReference(double distance)
+{
+	return std::max(distance, 1.0);
+}
+
+std::vector<Action> GestureState::PinchSteps(double distance, TouchPoint centroid)
+{
+	/* One finger movement is a few steps at most, so a bad reading can never
+	 * turn into a runaway zoom (or a loop that never ends). */
+	constexpr int max_steps = 4;
+	const double factor = this->settings.pinch_step_factor;
+	this->pinch_reference_distance = PinchReference(this->pinch_reference_distance);
+	std::vector<Action> actions;
+	while (actions.size() < max_steps && distance >= this->pinch_reference_distance * factor) {
+		this->pinch_reference_distance *= factor;
+		actions.push_back({ActionType::ZoomIn, centroid});
+	}
+	while (actions.size() < max_steps && distance <= this->pinch_reference_distance / factor &&
+			this->pinch_reference_distance / factor >= 1.0) {
+		this->pinch_reference_distance /= factor;
+		actions.push_back({ActionType::ZoomOut, centroid});
+	}
+	/* Whatever was not stepped this time is dropped, so the next movement
+	 * starts from where the fingers are now. */
+	if (actions.size() == max_steps) this->pinch_reference_distance = PinchReference(distance);
+	return actions;
+}
+
 GestureState::GestureState(Settings settings) : settings(settings)
 {
 }
@@ -168,7 +197,8 @@ std::vector<Action> GestureState::FingerDown(int64_t id, TouchPoint position, ui
 		this->two_finger_tap_possible = false;
 		this->two_finger_start_ms = timestamp_ms;
 		this->two_finger_contact_ms = timestamp_ms;
-		this->initial_pinch_distance = this->pinch_reference_distance = this->FingerDistance();
+		this->initial_pinch_distance = this->FingerDistance();
+		this->pinch_reference_distance = PinchReference(this->initial_pinch_distance);
 		this->initial_centroid = this->last_centroid = this->Centroid();
 		return {{ActionType::Cancel, position}};
 	}
@@ -179,7 +209,8 @@ std::vector<Action> GestureState::FingerDown(int64_t id, TouchPoint position, ui
 		this->two_finger_tap_possible = false;
 		this->two_finger_start_ms = timestamp_ms;
 		this->two_finger_contact_ms = timestamp_ms;
-		this->initial_pinch_distance = this->pinch_reference_distance = this->FingerDistance();
+		this->initial_pinch_distance = this->FingerDistance();
+		this->pinch_reference_distance = PinchReference(this->initial_pinch_distance);
 		this->initial_centroid = this->last_centroid = this->Centroid();
 		return result;
 	}
@@ -189,7 +220,8 @@ std::vector<Action> GestureState::FingerDown(int64_t id, TouchPoint position, ui
 	this->two_finger_tap_possible = timestamp_ms - first_down_ms <= this->settings.two_tap_stagger_ms;
 	this->two_finger_start_ms = first_down_ms;
 	this->two_finger_contact_ms = timestamp_ms;
-	this->initial_pinch_distance = this->pinch_reference_distance = this->FingerDistance();
+	this->initial_pinch_distance = this->FingerDistance();
+		this->pinch_reference_distance = PinchReference(this->initial_pinch_distance);
 	this->initial_centroid = this->last_centroid = this->Centroid();
 	return {};
 }
@@ -230,16 +262,7 @@ std::vector<Action> GestureState::FingerMove(int64_t id, TouchPoint position, ui
 			this->state = State::Pinching;
 			this->two_finger_tap_possible = false;
 			this->last_centroid = centroid;
-			std::vector<Action> actions;
-			while (distance >= this->pinch_reference_distance * this->settings.pinch_step_factor) {
-				this->pinch_reference_distance *= this->settings.pinch_step_factor;
-				actions.push_back({ActionType::ZoomIn, centroid});
-			}
-			while (distance <= this->pinch_reference_distance / this->settings.pinch_step_factor) {
-				this->pinch_reference_distance /= this->settings.pinch_step_factor;
-				actions.push_back({ActionType::ZoomOut, centroid});
-			}
-			return actions;
+			return this->PinchSteps(distance, centroid);
 		}
 		if (centroid_movement > this->settings.drag_activate) {
 			this->state = State::Panning;
@@ -265,16 +288,7 @@ std::vector<Action> GestureState::FingerMove(int64_t id, TouchPoint position, ui
 	if (this->state == State::Pinching) {
 		const double distance = this->FingerDistance();
 		const TouchPoint centroid = this->Centroid();
-		std::vector<Action> actions;
-		while (distance >= this->pinch_reference_distance * this->settings.pinch_step_factor) {
-			this->pinch_reference_distance *= this->settings.pinch_step_factor;
-			actions.push_back({ActionType::ZoomIn, centroid});
-		}
-		while (distance <= this->pinch_reference_distance / this->settings.pinch_step_factor) {
-			this->pinch_reference_distance /= this->settings.pinch_step_factor;
-			actions.push_back({ActionType::ZoomOut, centroid});
-		}
-		return actions;
+		return this->PinchSteps(distance, centroid);
 	}
 
 	if (this->state == State::Precision) {

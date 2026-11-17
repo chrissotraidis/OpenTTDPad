@@ -1,6 +1,26 @@
 # Implementation status
 
-Updated: **2026-11-15**
+Updated: **2026-11-17**
+
+## 2026-11-17: 0.2.0 published, PadMint 0.6.9 builds it
+
+- The repository is public (GPL-2.0 detected). [v0.2.0](https://github.com/chrissotraidis/OpenTTDPad/releases/tag/v0.2.0)
+  is the latest release at `11f2a15`, with the unsigned IPA, corresponding
+  source zip, downstream patch, notices and `OpenTTDPad-v0.2.0-padmint.json`,
+  all listed in `SHA256SUMS`. Every file passed `python3 -m padmint audit` and
+  the private release gate; anonymous downloads match their checksums. The
+  tagged-release workflow ran and left the published files unchanged.
+- GitHub Actions runs again on every push (public repositories are free); all
+  four workflows passed on `11f2a15`. The upstream monitor now reads the pinned
+  tag from `UPSTREAM_VERSION.md` (its false "15.3 is available" issue, #4, is
+  closed). Private vulnerability reporting is on.
+- [PadMint 0.6.9](https://github.com/chrissotraidis/padmint/releases/tag/v0.6.9)
+  lists OpenTTDPad. Its player check from PadMint `main` against the published
+  release (Apple Python 3.9, empty PadMint folder) passed in about 6 minutes, and
+  the PadMint-built IPA installed and launched on the iPad Pro 12.9-inch.
+- Fixed since the candidate: a pinch that began with both contacts at one point
+  never ended and crashed with `std::bad_alloc` (seen on the iPad after loading a
+  save; the crash log's new stack trace pointed at `GestureState::FingerMove`).
 
 ## 2026-11-16: 0.2.0 release candidate (unpublished)
 

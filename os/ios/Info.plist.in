@@ -92,13 +92,22 @@
             <dict><key>public.filename-extension</key><array><string>scn</string></array></dict>
         </dict>
     </array>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
     <key>UISupportedInterfaceOrientations~ipad</key>
     <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
         <string>UIInterfaceOrientationLandscapeLeft</string>
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
     <key>UIRequiresFullScreen</key>
     <true/>
+    <key>UIRequiresFullScreenIgnoredStartingWithVersion</key>
+    <string>26</string>
     <key>UIDeviceFamily</key>
     <array>
         <integer>2</integer>

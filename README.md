@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/chrissotraidis/OpenTTDPad/releases/tag/v0.2.0"><img alt="Release 0.2.0 preview" src="https://img.shields.io/badge/release-0.2.0%20preview-FF9F0A"></a>
+  <a href="https://github.com/chrissotraidis/OpenTTDPad/releases/tag/v0.2.1"><img alt="Release 0.2.1 preview" src="https://img.shields.io/badge/release-0.2.1%20preview-FF9F0A"></a>
   <img alt="iPadOS 17 or later" src="https://img.shields.io/badge/iPadOS-17%2B-0A84FF?logo=apple">
   <img alt="OpenTTD 15.3" src="https://img.shields.io/badge/OpenTTD-15.3-F28C28">
   <img alt="Native ARM64" src="https://img.shields.io/badge/runtime-native%20ARM64-30D158">
